@@ -429,7 +429,7 @@
                     🧲 Press <strong>E</strong> to activate Magnet ability<br>
                     📱 On mobile: <strong>Tap</strong> to jump, <strong>Double-tap</strong> for Magnet<br>
                     🐟 Collect <strong>100 treats</strong> to complete the level!<br>
-                    ⭐ Find rare <strong>MEGA treats</strong> worth 5 points!<br>
+                    ⭐ Find rare <strong>MEGA treats</strong> worth 10 points!<br>
                     🐦 Watch out for pesky birds!
                 </p>
             </div>
@@ -516,6 +516,27 @@
                 earInner: '#FFB8B8',
                 noseColor: '#FF6B9D',
                 eyeColor: '#27AE60'
+            },
+            {
+                id: 'lio',
+                name: '🦁 Lio',
+                bodyColor: '#F4A460',
+                stripeColor: '#CD853F',
+                earInner: '#FFE4B5',
+                noseColor: '#8B4513',
+                eyeColor: '#FFD700',
+                mane: true
+            },
+            {
+                id: 'stich',
+                name: '💙 Stich',
+                bodyColor: '#4169E1',
+                stripeColor: '#1E3A8A',
+                earInner: '#87CEEB',
+                noseColor: '#2C3E50',
+                eyeColor: '#1E1E1E',
+                bigEars: true,
+                patches: ['#1E3A8A']
             },
             {
                 id: 'thanksgiving',
@@ -781,32 +802,37 @@
                     originalY: newY,
                     moveTimer: Math.random() * Math.PI * 2,
                     moveSpeed: 0.012 + Math.random() * 0.012,
-                    moveRange: 20 + Math.random() * 25
+                    moveRange: 20 + Math.random() * 25,
+                    prevX: newX,
+                    deltaX: 0
                 };
                 
                 platforms.push(newPlat);
                 lastPlatform = newPlat;
 
-                // Add treats on platforms
-                if (Math.random() < 0.65) {
-                    const numTreats = Math.random() < 0.25 ? 2 : 1;
-                    for (let t = 0; t < numTreats; t++) {
-                        const isMega = Math.random() < 0.1;
-                        treats.push({
-                            x: newX + platWidth * 0.25 + Math.random() * platWidth * 0.5,
-                            y: newY - 25 - Math.random() * 20,
-                            collected: false,
-                            bobTimer: Math.random() * Math.PI * 2,
-                            mega: isMega,
-                            value: isMega ? 5 : 1
-                        });
-                    }
+                // Add ONE treat per platform (max 1 per platform)
+                if (Math.random() < 0.7) {
+                    // Rare mega treats: only 3% chance, worth 10 points
+                    const isMega = Math.random() < 0.03;
+                    treats.push({
+                        x: newX + platWidth * 0.5,
+                        y: newY - 25,
+                        collected: false,
+                        bobTimer: Math.random() * Math.PI * 2,
+                        mega: isMega,
+                        value: isMega ? 10 : 1,
+                        platformIndex: platforms.length - 1,
+                        respawnTimer: 0,
+                        originalX: newX + platWidth * 0.5,
+                        originalY: newY - 25
+                    });
                 }
                 
-                // Add floating treats between some platforms
-                if (i > 0 && Math.random() < 0.2 && platforms.length >= 3) {
+                // Add floating treats between some platforms (not on platforms)
+                if (i > 0 && Math.random() < 0.25 && platforms.length >= 3) {
                     const prevPlat = platforms[platforms.length - 2];
-                    const isMega = Math.random() < 0.2;
+                    // Floating treats: 5% chance to be mega, worth 10 points
+                    const isMega = Math.random() < 0.05;
                     const midX = (prevPlat.x + prevPlat.width + newX) / 2;
                     const midY = Math.min(prevPlat.y, newY) - 40 - Math.random() * 30;
                     treats.push({
@@ -815,7 +841,11 @@
                         collected: false,
                         bobTimer: Math.random() * Math.PI * 2,
                         mega: isMega,
-                        value: isMega ? 5 : 1
+                        value: isMega ? 10 : 1,
+                        platformIndex: -1, // floating, not on a platform
+                        respawnTimer: 0,
+                        originalX: midX,
+                        originalY: midY
                     });
                 }
             }
@@ -1124,6 +1154,61 @@
             ctx.ellipse(11, headY + 5, 4, 2.5, -0.2, 0, Math.PI * 2);
             ctx.fill();
 
+            // === SPECIAL SKINS ACCESSORIES ===
+            // Lio's Mane
+            if (skin.mane) {
+                ctx.fillStyle = '#CD853F';
+                // Draw fluffy mane around face
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+                    const maneX = Math.cos(angle) * 22;
+                    const maneY = headY + Math.sin(angle) * 18;
+                    ctx.beginPath();
+                    ctx.ellipse(maneX, maneY, 10, 8, angle, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Inner mane layer (lighter)
+                ctx.fillStyle = '#DEB887';
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2 - Math.PI / 2;
+                    const maneX = Math.cos(angle) * 18;
+                    const maneY = headY + Math.sin(angle) * 15;
+                    ctx.beginPath();
+                    ctx.ellipse(maneX, maneY, 6, 5, angle, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Stich's Big Ears (draw extra large ears)
+            if (skin.bigEars) {
+                // Big rounded ears on top
+                ctx.fillStyle = skin.bodyColor;
+                // Left big ear
+                ctx.beginPath();
+                ctx.ellipse(-16, headY - 18, 10, 18, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Right big ear
+                ctx.beginPath();
+                ctx.ellipse(16, headY - 18, 10, 18, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Ear inner
+                ctx.fillStyle = skin.earInner;
+                ctx.beginPath();
+                ctx.ellipse(-16, headY - 16, 6, 12, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(16, headY - 16, 6, 12, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Darker spots on body
+                ctx.fillStyle = skin.stripeColor;
+                ctx.beginPath();
+                ctx.ellipse(-8, 0 + bounce, 8, 6, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(10, 2 + bounce, 6, 5, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             // === HOLIDAY ACCESSORIES ===
             if (skin.hat === 'santa') {
                 ctx.fillStyle = '#C0392B';
@@ -1273,58 +1358,97 @@
 
             const flapOffset = Math.sin(bird.animTimer * 8) * 10;
 
-            // Body
-            ctx.fillStyle = '#5D6D7E';
+            // Glow effect for visibility
+            ctx.shadowColor = '#FF6B6B';
+            ctx.shadowBlur = 8;
+
+            // Body - bright red cardinal style
+            ctx.fillStyle = '#E74C3C';
             ctx.beginPath();
             ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Head
-            ctx.fillStyle = '#34495E';
+            // Head - bright red
+            ctx.fillStyle = '#C0392B';
             ctx.beginPath();
             ctx.arc(12, -3, 8, 0, Math.PI * 2);
             ctx.fill();
 
-            // Beak
-            ctx.fillStyle = '#F39C12';
+            // Crest on head (cardinal style)
+            ctx.fillStyle = '#E74C3C';
+            ctx.beginPath();
+            ctx.moveTo(10, -8);
+            ctx.lineTo(14, -18);
+            ctx.lineTo(18, -8);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // Beak - bright yellow/orange
+            ctx.fillStyle = '#F1C40F';
             ctx.beginPath();
             ctx.moveTo(18, -3);
-            ctx.lineTo(26, -1);
+            ctx.lineTo(28, -1);
             ctx.lineTo(18, 1);
             ctx.closePath();
             ctx.fill();
 
-            // Eye
+            // Eye - large white with dark pupil
             ctx.fillStyle = 'white';
             ctx.beginPath();
-            ctx.arc(14, -4, 4, 0, Math.PI * 2);
+            ctx.arc(14, -4, 5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#2C3E50';
+            ctx.fillStyle = '#1a1a1a';
             ctx.beginPath();
-            ctx.arc(15, -4, 2, 0, Math.PI * 2);
+            ctx.arc(15, -4, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Eye shine
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(14, -5, 1.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Angry eyebrow
-            ctx.strokeStyle = '#2C3E50';
-            ctx.lineWidth = 2;
+            // Angry eyebrow - darker
+            ctx.strokeStyle = '#922B21';
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(10, -8);
-            ctx.lineTo(18, -6);
+            ctx.moveTo(9, -9);
+            ctx.lineTo(19, -6);
             ctx.stroke();
 
-            // Wings
-            ctx.fillStyle = '#7F8C8D';
+            // Wings - bright orange-red
+            ctx.fillStyle = '#F39C12';
             ctx.beginPath();
             ctx.ellipse(-5, -5 + flapOffset, 12, 6, -0.3, 0, Math.PI * 2);
             ctx.fill();
+            // Wing detail
+            ctx.fillStyle = '#E74C3C';
+            ctx.beginPath();
+            ctx.ellipse(-3, -5 + flapOffset, 8, 4, -0.3, 0, Math.PI * 2);
+            ctx.fill();
 
-            // Tail
-            ctx.fillStyle = '#5D6D7E';
+            // Tail - bright with pattern
+            ctx.fillStyle = '#C0392B';
             ctx.beginPath();
             ctx.moveTo(-12, 0);
-            ctx.lineTo(-25, -5);
-            ctx.lineTo(-25, 5);
+            ctx.lineTo(-28, -6);
+            ctx.lineTo(-28, 6);
             ctx.closePath();
+            ctx.fill();
+            // Tail accent
+            ctx.fillStyle = '#F39C12';
+            ctx.beginPath();
+            ctx.moveTo(-12, 0);
+            ctx.lineTo(-22, -3);
+            ctx.lineTo(-22, 3);
+            ctx.closePath();
+            ctx.fill();
+
+            // Belly highlight
+            ctx.fillStyle = '#F5B7B1';
+            ctx.beginPath();
+            ctx.ellipse(2, 4, 8, 5, 0, 0, Math.PI);
             ctx.fill();
 
             ctx.restore();
@@ -1752,6 +1876,7 @@
 
             // Platform collision
             cat.onGround = false;
+            cat.currentPlatform = null;
             platforms.forEach(plat => {
                 if (cat.x + cat.width > plat.x && cat.x < plat.x + plat.width) {
                     if (cat.y + cat.height > plat.y && cat.y + cat.height < plat.y + plat.height + cat.vy + 10) {
@@ -1759,11 +1884,11 @@
                             cat.y = plat.y - cat.height;
                             cat.vy = 0;
                             cat.onGround = true;
+                            cat.currentPlatform = plat;
 
-                            // Move with moving platform
-                            if (plat.type === 'moving') {
-                                const newX = plat.originalX + Math.sin(plat.moveTimer) * plat.moveRange;
-                                cat.x += newX - plat.x;
+                            // Move with moving platform using pre-calculated delta
+                            if (plat.type === 'moving' && plat.deltaX !== undefined) {
+                                cat.x += plat.deltaX;
                             }
                         }
                     }
@@ -1787,18 +1912,39 @@
         function updatePlatforms() {
             platforms.forEach(plat => {
                 if (plat.type === 'moving') {
+                    // Store previous position before updating
+                    plat.prevX = plat.x;
                     plat.moveTimer += plat.moveSpeed;
                     plat.x = plat.originalX + Math.sin(plat.moveTimer) * plat.moveRange;
+                    // Calculate delta for this frame
+                    plat.deltaX = plat.x - plat.prevX;
                 }
             });
         }
+
+        const TREAT_RESPAWN_TIME = 300; // frames (~5 seconds at 60fps)
 
         function updateTreats() {
             const catCenterX = cat.x + cat.width / 2;
             const catCenterY = cat.y + cat.height / 2;
 
             treats.forEach(treat => {
-                if (treat.collected) return;
+                // Handle respawn timer for collected treats
+                if (treat.collected) {
+                    treat.respawnTimer++;
+                    if (treat.respawnTimer >= TREAT_RESPAWN_TIME) {
+                        // Respawn the treat at original position
+                        treat.collected = false;
+                        treat.respawnTimer = 0;
+                        treat.x = treat.originalX;
+                        treat.y = treat.originalY;
+                        // Re-randomize mega status (same low chance)
+                        const isMega = Math.random() < 0.03;
+                        treat.mega = isMega;
+                        treat.value = isMega ? 10 : 1;
+                    }
+                    return;
+                }
 
                 treat.bobTimer += 0.1;
 
@@ -1816,14 +1962,16 @@
                 const collectRange = magnetActive ? 40 : (treat.mega ? 35 : 25);
                 if (dist < collectRange) {
                     treat.collected = true;
+                    treat.respawnTimer = 0;
                     const points = treat.value || 1;
                     treatsCollected += points;
-                    energy = Math.min(100, energy + (treat.mega ? 15 : 5));
+                    energy = Math.min(100, energy + (treat.mega ? 20 : 5));
                     
                     // More particles for mega treats
                     if (treat.mega) {
-                        spawnParticles(treat.x, treat.y, '#FFD700', 20);
-                        spawnParticles(treat.x, treat.y, '#FFF', 10);
+                        spawnParticles(treat.x, treat.y, '#FFD700', 25);
+                        spawnParticles(treat.x, treat.y, '#FFF', 15);
+                        spawnParticles(treat.x, treat.y, '#FF6B9D', 10);
                     } else {
                         spawnParticles(treat.x, treat.y, '#FFD700', 8);
                     }
@@ -1999,11 +2147,11 @@
                 // Draw particles
                 drawParticles();
 
-                // Draw cat
+                // Draw cat - offset Y by 22 pixels so feet sit ON the platform surface
                 drawCatSprite(
                     ctx,
                     cat.x + cat.width / 2 - camera.x,
-                    cat.y + cat.height - camera.y,
+                    cat.y + cat.height - camera.y - 22,
                     selectedSkin,
                     cat.facingRight,
                     cat.animFrame,
