@@ -37,7 +37,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: #87CEEB;
+            background: #1a1a3e;
             overflow: hidden;
         }
 
@@ -878,939 +878,326 @@
             if (!facingRight) ctx.scale(-1, 1);
             ctx.scale(scale, scale);
 
-            const bounce = Math.sin(animFrame * 0.3) * 1.2;
-            const breathe = Math.sin(animFrame * 0.08) * 0.8;
-
-            // Seeded random for consistent fur pattern per frame
-            let furSeed = 12345;
-            function seededRandom() {
-                furSeed = (furSeed * 9301 + 49297) % 233280;
-                return furSeed / 233280;
-            }
-
-            // Helper function for fur texture - more realistic wispy strokes
-            function addFurTexture(baseX, baseY, width, height, color, density = 10, direction = 0) {
-                ctx.strokeStyle = color;
-                ctx.lineCap = 'round';
-                for (let i = 0; i < density; i++) {
-                    const fx = baseX + (seededRandom() - 0.5) * width;
-                    const fy = baseY + (seededRandom() - 0.5) * height;
-                    const length = 2 + seededRandom() * 3;
-                    const angle = direction + (seededRandom() - 0.5) * 0.5;
-                    ctx.lineWidth = 0.3 + seededRandom() * 0.4;
-                    ctx.beginPath();
-                    ctx.moveTo(fx, fy);
-                    ctx.lineTo(fx + Math.cos(angle) * length, fy + Math.sin(angle) * length);
-                    ctx.stroke();
-                }
-            }
-
-            // Darken/lighten color helper
-            function shadeColor(color, percent) {
-                const num = parseInt(color.replace('#', ''), 16);
-                const amt = Math.round(2.55 * percent);
-                const R = Math.min(255, Math.max(0, (num >> 16) + amt));
-                const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
-                const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
-                return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
-            }
-
-            // Blend two colors
-            function blendColors(color1, color2, ratio) {
-                const c1 = parseInt(color1.replace('#', ''), 16);
-                const c2 = parseInt(color2.replace('#', ''), 16);
-                const r = Math.round(((c1 >> 16) & 0xFF) * (1 - ratio) + ((c2 >> 16) & 0xFF) * ratio);
-                const g = Math.round(((c1 >> 8) & 0xFF) * (1 - ratio) + ((c2 >> 8) & 0xFF) * ratio);
-                const b = Math.round((c1 & 0xFF) * (1 - ratio) + (c2 & 0xFF) * ratio);
-                return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
-            }
-
+            const bounce = Math.sin(animFrame * 0.3) * 2;
+            const tailWag = Math.sin(animFrame * 0.15) * 20;
             const legAnim = Math.sin(animFrame * 0.4) * 3;
-            const tailWave = Math.sin(animFrame * 0.12) * 15;
 
-            // === TAIL (behind body) - more realistic fluffy tail ===
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            
-            // Tail base position with natural curve
-            const tailBaseX = -14;
-            const tailBaseY = 5 + bounce;
-            const tailMidX = -24;
-            const tailMidY = -5 + tailWave * 0.6 + bounce;
-            const tailEndX = -32;
-            const tailEndY = -18 + tailWave + bounce;
-            
-            // Tail shadow (underneath)
-            ctx.strokeStyle = shadeColor(skin.bodyColor, -25);
-            ctx.lineWidth = 10;
-            ctx.beginPath();
-            ctx.moveTo(tailBaseX, tailBaseY + 2);
-            ctx.bezierCurveTo(tailBaseX - 6, tailBaseY - 4, tailMidX + 2, tailMidY + 4, tailMidX, tailMidY + 2);
-            ctx.bezierCurveTo(tailMidX - 4, tailMidY - 2, tailEndX + 4, tailEndY + 6, tailEndX, tailEndY + 2);
-            ctx.stroke();
-            
-            // Tail main body with gradient effect
-            ctx.strokeStyle = skin.bodyColor;
-            ctx.lineWidth = 8;
-            ctx.beginPath();
-            ctx.moveTo(tailBaseX, tailBaseY);
-            ctx.bezierCurveTo(tailBaseX - 6, tailBaseY - 6, tailMidX + 2, tailMidY + 2, tailMidX, tailMidY);
-            ctx.bezierCurveTo(tailMidX - 4, tailMidY - 4, tailEndX + 4, tailEndY + 4, tailEndX, tailEndY);
-            ctx.stroke();
-            
-            // Tail highlight (top edge)
-            ctx.strokeStyle = shadeColor(skin.bodyColor, 25);
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(tailBaseX - 1, tailBaseY - 3);
-            ctx.bezierCurveTo(tailBaseX - 5, tailBaseY - 8, tailMidX + 3, tailMidY - 2, tailMidX + 1, tailMidY - 2);
-            ctx.bezierCurveTo(tailMidX - 2, tailMidY - 5, tailEndX + 5, tailEndY + 1, tailEndX + 2, tailEndY - 1);
-            ctx.stroke();
-            
-            // Tail tip - fluffy end
+            // === CUTE FLUFFY TAIL ===
             ctx.fillStyle = skin.bodyColor;
             ctx.beginPath();
-            ctx.ellipse(tailEndX - 2, tailEndY, 5, 4, -0.4 + tailWave * 0.02, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = shadeColor(skin.bodyColor, 15);
-            ctx.beginPath();
-            ctx.ellipse(tailEndX - 1, tailEndY - 2, 3, 2, -0.3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Tail stripes (if applicable)
-            if (!skin.patches) {
-                ctx.strokeStyle = skin.stripeColor;
-                ctx.lineWidth = 2;
-                ctx.globalAlpha = 0.6;
-                for (let i = 0; i < 3; i++) {
-                    const t = 0.3 + i * 0.2;
-                    const sx = tailBaseX + (tailMidX - tailBaseX) * t + (tailEndX - tailMidX) * Math.max(0, t - 0.5) * 2;
-                    const sy = tailBaseY + (tailMidY - tailBaseY) * t + (tailEndY - tailMidY) * Math.max(0, t - 0.5) * 2;
-                    ctx.beginPath();
-                    ctx.moveTo(sx - 2, sy - 3);
-                    ctx.lineTo(sx + 2, sy + 3);
-                    ctx.stroke();
-                }
-                ctx.globalAlpha = 1;
-            }
-
-            // === BACK LEGS (behind body) - realistic haunched position ===
-            const blLegAnim = -legAnim * 0.5;
-            const blLegY = 19 + bounce + blLegAnim;
-            
-            // Back leg thigh (muscular haunch)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -18);
-            ctx.beginPath();
-            ctx.ellipse(-7, 6 + bounce, 7, 9, 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Back leg lower portion
-            ctx.fillStyle = shadeColor(skin.bodyColor, -12);
-            ctx.beginPath();
-            ctx.moveTo(-5, 10 + bounce);
-            ctx.quadraticCurveTo(-8, 14 + bounce + blLegAnim * 0.3, -9, blLegY);
-            ctx.lineTo(-13, blLegY);
-            ctx.quadraticCurveTo(-14, 14 + bounce + blLegAnim * 0.3, -12, 10 + bounce);
+            ctx.moveTo(-12, 5 + bounce);
+            ctx.quadraticCurveTo(-25, -5 + tailWag * 0.5 + bounce, -28, -15 + tailWag + bounce);
+            ctx.quadraticCurveTo(-22, -18 + tailWag + bounce, -18, -12 + tailWag * 0.7 + bounce);
+            ctx.quadraticCurveTo(-10, 0 + bounce, -8, 5 + bounce);
             ctx.closePath();
             ctx.fill();
             
-            // Back paw
-            ctx.fillStyle = blendColors(skin.earInner, skin.bodyColor, 0.25);
+            // Tail tip (lighter)
+            ctx.fillStyle = skin.stripeColor;
             ctx.beginPath();
-            ctx.ellipse(-11, blLegY + 2, 5, 3, 0.05, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Toe bumps
-            for (let t = 0; t < 3; t++) {
-                ctx.beginPath();
-                ctx.ellipse(-13 + t * 2, blLegY + 1, 1, 1.2, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Toe beans on back paw
-            ctx.fillStyle = skin.noseColor;
-            ctx.globalAlpha = 0.5;
-            for (let t = 0; t < 3; t++) {
-                ctx.beginPath();
-                ctx.arc(-13 + t * 2, blLegY + 2.5, 0.8, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.globalAlpha = 1;
-
-            // === BODY - more realistic cat proportions ===
-            // Body is slightly elongated, with haunches and shoulders
-            
-            // Haunches (back of body, slightly raised)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -15);
-            ctx.beginPath();
-            ctx.ellipse(-8, 4 + bounce + breathe, 14, 13 + breathe, 0.15, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Main body with gradient
-            const bodyGradient = ctx.createRadialGradient(4, -2 + bounce, 0, 0, 2 + bounce, 22);
-            bodyGradient.addColorStop(0, shadeColor(skin.bodyColor, 20));
-            bodyGradient.addColorStop(0.5, skin.bodyColor);
-            bodyGradient.addColorStop(1, shadeColor(skin.bodyColor, -15));
-            ctx.fillStyle = bodyGradient;
-            ctx.beginPath();
-            ctx.ellipse(2, 2 + bounce + breathe, 18, 14 + breathe, 0.08, 0, Math.PI * 2);
+            ctx.arc(-26, -14 + tailWag + bounce, 5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Shoulder area (front of body)
-            ctx.fillStyle = shadeColor(skin.bodyColor, 5);
+            // === BACK LEGS ===
+            const backLegY = 18 + bounce - legAnim * 0.5;
+            ctx.fillStyle = skin.bodyColor;
             ctx.beginPath();
-            ctx.ellipse(10, 0 + bounce + breathe, 12, 12 + breathe, -0.1, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Body highlight (top back - where light would hit)
-            ctx.fillStyle = shadeColor(skin.bodyColor, 30);
-            ctx.beginPath();
-            ctx.ellipse(-2, -8 + bounce + breathe, 12, 5, 0.1, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Chest/belly fur (lighter underside - realistic cat coloring)
-            ctx.fillStyle = shadeColor(skin.bodyColor, 40);
-            ctx.beginPath();
-            ctx.ellipse(8, 8 + bounce + breathe, 7, 9, 0.25, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Subtle belly highlight
-            ctx.fillStyle = shadeColor(skin.bodyColor, 50);
-            ctx.globalAlpha = 0.5;
-            ctx.beginPath();
-            ctx.ellipse(8, 10 + bounce + breathe, 4, 5, 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-
-            // Fur texture on body - more natural direction following body contour
-            addFurTexture(-5, bounce, 15, 18, shadeColor(skin.bodyColor, -20), 8, Math.PI * 0.6);
-            addFurTexture(8, bounce, 15, 18, shadeColor(skin.bodyColor, -20), 8, Math.PI * 0.4);
-            addFurTexture(2, 8 + bounce, 12, 10, shadeColor(skin.bodyColor, 15), 6, Math.PI * 0.5);
-
-            // Tabby stripes (more natural, varying thickness)
-            if (!skin.patches) {
-                ctx.strokeStyle = skin.stripeColor;
-                ctx.lineCap = 'round';
-                ctx.globalAlpha = 0.7;
-                // Back stripes
-                for (let i = -2; i <= 1; i++) {
-                    const stripeX = i * 6 - 2;
-                    ctx.lineWidth = 2 + Math.abs(i) * 0.3;
-                    ctx.beginPath();
-                    ctx.moveTo(stripeX - 1, -9 + bounce);
-                    ctx.bezierCurveTo(stripeX - 2, -3 + bounce, stripeX + 1, 4 + bounce, stripeX, 10 + bounce);
-                    ctx.stroke();
-                }
-                ctx.globalAlpha = 1;
-            }
-
-            // Patches for calico (more organic, asymmetric shapes)
-            if (skin.patches) {
-                ctx.globalAlpha = 0.9;
-                // Dark patch
-                ctx.fillStyle = skin.patches[0];
-                ctx.beginPath();
-                ctx.moveTo(-12, -6 + bounce);
-                ctx.bezierCurveTo(-15, 0 + bounce, -10, 6 + bounce, -5, 4 + bounce);
-                ctx.bezierCurveTo(-2, 2 + bounce, -4, -4 + bounce, -8, -8 + bounce);
-                ctx.closePath();
-                ctx.fill();
-                // Orange patch  
-                ctx.fillStyle = skin.patches[1];
-                ctx.beginPath();
-                ctx.moveTo(6, 2 + bounce);
-                ctx.bezierCurveTo(10, -2 + bounce, 14, 4 + bounce, 12, 10 + bounce);
-                ctx.bezierCurveTo(8, 12 + bounce, 4, 8 + bounce, 5, 4 + bounce);
-                ctx.closePath();
-                ctx.fill();
-                ctx.globalAlpha = 1;
-            }
-
-            // === FRONT LEGS - more realistic with proper joint articulation ===
-            
-            // Front right leg (further back, slightly shadowed)
-            const frLegY = 20 + bounce - legAnim;
-            ctx.fillStyle = shadeColor(skin.bodyColor, -12);
-            // Upper leg
-            ctx.beginPath();
-            ctx.moveTo(3, 8 + bounce);
-            ctx.quadraticCurveTo(1, 12 + bounce, 2, 15 + bounce - legAnim * 0.5);
-            // Lower leg with slight taper
-            ctx.quadraticCurveTo(1, 17 + bounce - legAnim * 0.7, 3, frLegY);
-            ctx.lineTo(8, frLegY);
-            ctx.quadraticCurveTo(9, 17 + bounce - legAnim * 0.7, 9, 15 + bounce - legAnim * 0.5);
-            ctx.quadraticCurveTo(10, 12 + bounce, 9, 8 + bounce);
-            ctx.closePath();
+            ctx.ellipse(-6, backLegY, 6, 8, 0.2, 0, Math.PI * 2);
             ctx.fill();
             // Paw
-            ctx.fillStyle = blendColors(skin.earInner, skin.bodyColor, 0.2);
+            ctx.fillStyle = skin.earInner;
             ctx.beginPath();
-            ctx.ellipse(5.5, frLegY + 2, 5, 3, 0.05, 0, Math.PI * 2);
+            ctx.ellipse(-8, backLegY + 6, 5, 3, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Front left leg (closer, more detail)
-            const flLegY = 20 + bounce + legAnim;
-            // Leg shadow
-            ctx.fillStyle = shadeColor(skin.bodyColor, -8);
-            ctx.beginPath();
-            ctx.ellipse(13, 14 + bounce + legAnim * 0.5, 4, 8, 0.05, 0, Math.PI * 2);
-            ctx.fill();
-            // Main leg
+            // === BODY - cute round chubby body ===
             ctx.fillStyle = skin.bodyColor;
             ctx.beginPath();
-            ctx.moveTo(9, 8 + bounce);
-            ctx.quadraticCurveTo(8, 12 + bounce, 9, 15 + bounce + legAnim * 0.5);
-            ctx.quadraticCurveTo(8, 17 + bounce + legAnim * 0.7, 10, flLegY);
-            ctx.lineTo(16, flLegY);
-            ctx.quadraticCurveTo(17, 17 + bounce + legAnim * 0.7, 17, 15 + bounce + legAnim * 0.5);
-            ctx.quadraticCurveTo(18, 12 + bounce, 17, 8 + bounce);
-            ctx.closePath();
-            ctx.fill();
-            // Leg highlight
-            ctx.fillStyle = shadeColor(skin.bodyColor, 15);
-            ctx.beginPath();
-            ctx.ellipse(11, 14 + bounce + legAnim * 0.5, 2, 5, 0.1, 0, Math.PI * 2);
+            ctx.ellipse(0, 5 + bounce, 18, 16, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // Paw with realistic shape and toes
-            ctx.fillStyle = blendColors(skin.earInner, skin.bodyColor, 0.15);
-            ctx.beginPath();
-            ctx.ellipse(13, flLegY + 2.5, 5.5, 3.5, 0.02, 0, Math.PI * 2);
-            ctx.fill();
-            // Individual toe bumps
-            ctx.fillStyle = blendColors(skin.earInner, skin.bodyColor, 0.1);
-            for (let t = 0; t < 4; t++) {
-                ctx.beginPath();
-                ctx.ellipse(10.5 + t * 1.8, flLegY + 1, 1.2, 1.5, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            // Toe beans (visible on underside)
-            ctx.fillStyle = skin.noseColor;
-            ctx.globalAlpha = 0.6;
-            for (let t = 0; t < 4; t++) {
-                ctx.beginPath();
-                ctx.ellipse(10.5 + t * 1.8, flLegY + 2.5, 0.9, 0.7, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            // Main pad
-            ctx.globalAlpha = 0.7;
-            ctx.beginPath();
-            ctx.ellipse(13, flLegY + 4, 2.5, 1.8, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-            // Subtle fur on leg
-            addFurTexture(13, 14 + bounce + legAnim * 0.5, 8, 10, shadeColor(skin.bodyColor, -15), 4, Math.PI * 0.5);
-
-            // === HEAD - realistic cat head shape ===
-            const headY = -17 + bounce;
-            
-            // Neck connection (subtle)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -5);
-            ctx.beginPath();
-            ctx.ellipse(5, -5 + bounce, 10, 8, -0.2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Head shadow (underneath)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -18);
-            ctx.beginPath();
-            ctx.ellipse(1, headY + 3, 15, 13, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Main head - wedge shape typical of cats
-            const headGradient = ctx.createRadialGradient(-3, headY - 5, 0, 0, headY, 16);
-            headGradient.addColorStop(0, shadeColor(skin.bodyColor, 25));
-            headGradient.addColorStop(0.6, skin.bodyColor);
-            headGradient.addColorStop(1, shadeColor(skin.bodyColor, -10));
-            ctx.fillStyle = headGradient;
-            ctx.beginPath();
-            ctx.ellipse(0, headY, 14, 12.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Head top highlight (fur catch light)
-            ctx.fillStyle = shadeColor(skin.bodyColor, 30);
-            ctx.globalAlpha = 0.7;
-            ctx.beginPath();
-            ctx.ellipse(-3, headY - 8, 7, 4, -0.15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-
-            // Cheek fluff (ruff) - fluffy sides of face
-            ctx.fillStyle = shadeColor(skin.bodyColor, 18);
-            ctx.beginPath();
-            ctx.ellipse(-11, headY + 5, 5, 6, 0.4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(11, headY + 5, 5, 6, -0.4, 0, Math.PI * 2);
-            ctx.fill();
-            // Inner cheek highlight
-            ctx.fillStyle = shadeColor(skin.bodyColor, 35);
-            ctx.beginPath();
-            ctx.ellipse(-10, headY + 4, 3, 4, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(10, headY + 4, 3, 4, -0.3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Fur texture on head - radiating from center
-            addFurTexture(-6, headY - 3, 10, 12, shadeColor(skin.bodyColor, -15), 6, Math.PI * 0.8);
-            addFurTexture(6, headY - 3, 10, 12, shadeColor(skin.bodyColor, -15), 6, Math.PI * 0.2);
-            addFurTexture(0, headY - 8, 14, 6, shadeColor(skin.bodyColor, -15), 5, -Math.PI * 0.5);
-
-            // Forehead marking (M shape for tabbies - distinctive feature)
-            if (!skin.patches) {
-                ctx.strokeStyle = skin.stripeColor;
-                ctx.lineWidth = 1.8;
-                ctx.lineCap = 'round';
-                ctx.globalAlpha = 0.8;
-                ctx.beginPath();
-                ctx.moveTo(-7, headY - 8);
-                ctx.quadraticCurveTo(-5, headY - 5, -3, headY - 6);
-                ctx.quadraticCurveTo(0, headY - 9, 3, headY - 6);
-                ctx.quadraticCurveTo(5, headY - 5, 7, headY - 8);
-                ctx.stroke();
-                // Brow lines extending from M
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.moveTo(-9, headY - 6);
-                ctx.lineTo(-12, headY - 3);
-                ctx.moveTo(9, headY - 6);
-                ctx.lineTo(12, headY - 3);
-                ctx.stroke();
-                ctx.globalAlpha = 1;
-            }
-
-            // === EARS - realistic triangular cat ears with depth ===
-            const earBaseY = headY - 9;
-            
-            // Left ear back/shadow
-            ctx.fillStyle = shadeColor(skin.bodyColor, -20);
-            ctx.beginPath();
-            ctx.moveTo(-14, earBaseY + 2);
-            ctx.quadraticCurveTo(-17, earBaseY - 8, -11, earBaseY - 18);
-            ctx.quadraticCurveTo(-7, earBaseY - 10, -5, earBaseY + 1);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Left ear main
-            ctx.fillStyle = skin.bodyColor;
-            ctx.beginPath();
-            ctx.moveTo(-13, earBaseY);
-            ctx.bezierCurveTo(-15, earBaseY - 6, -14, earBaseY - 14, -10, earBaseY - 17);
-            ctx.bezierCurveTo(-7, earBaseY - 12, -6, earBaseY - 5, -6, earBaseY);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Left ear inner (pink)
-            const earInnerGradient = ctx.createLinearGradient(-11, earBaseY - 15, -8, earBaseY - 3);
-            earInnerGradient.addColorStop(0, shadeColor(skin.earInner, -10));
-            earInnerGradient.addColorStop(1, skin.earInner);
-            ctx.fillStyle = earInnerGradient;
-            ctx.beginPath();
-            ctx.moveTo(-11, earBaseY - 2);
-            ctx.bezierCurveTo(-12, earBaseY - 6, -12, earBaseY - 11, -10, earBaseY - 14);
-            ctx.bezierCurveTo(-8, earBaseY - 10, -8, earBaseY - 5, -8, earBaseY - 2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Left ear fur tufts (lynx tips)
-            ctx.strokeStyle = shadeColor(skin.bodyColor, 25);
-            ctx.lineWidth = 1.2;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(-10, earBaseY - 17);
-            ctx.lineTo(-9, earBaseY - 21);
-            ctx.moveTo(-11, earBaseY - 16);
-            ctx.lineTo(-12, earBaseY - 19);
-            ctx.stroke();
-            // Inner ear fur
-            ctx.strokeStyle = shadeColor(skin.earInner, 20);
-            ctx.lineWidth = 0.8;
-            for (let f = 0; f < 3; f++) {
-                ctx.beginPath();
-                ctx.moveTo(-10 + f * 0.8, earBaseY - 3 - f * 2);
-                ctx.lineTo(-10 + f * 0.5, earBaseY - 6 - f * 2);
-                ctx.stroke();
-            }
-
-            // Right ear back/shadow
-            ctx.fillStyle = shadeColor(skin.bodyColor, -20);
-            ctx.beginPath();
-            ctx.moveTo(5, earBaseY + 1);
-            ctx.quadraticCurveTo(7, earBaseY - 10, 11, earBaseY - 18);
-            ctx.quadraticCurveTo(17, earBaseY - 8, 14, earBaseY + 2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Right ear main
-            ctx.fillStyle = skin.bodyColor;
-            ctx.beginPath();
-            ctx.moveTo(6, earBaseY);
-            ctx.bezierCurveTo(6, earBaseY - 5, 7, earBaseY - 12, 10, earBaseY - 17);
-            ctx.bezierCurveTo(14, earBaseY - 14, 15, earBaseY - 6, 13, earBaseY);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Right ear inner
-            const earInnerGradient2 = ctx.createLinearGradient(11, earBaseY - 15, 8, earBaseY - 3);
-            earInnerGradient2.addColorStop(0, shadeColor(skin.earInner, -10));
-            earInnerGradient2.addColorStop(1, skin.earInner);
-            ctx.fillStyle = earInnerGradient2;
-            ctx.beginPath();
-            ctx.moveTo(8, earBaseY - 2);
-            ctx.bezierCurveTo(8, earBaseY - 5, 8, earBaseY - 10, 10, earBaseY - 14);
-            ctx.bezierCurveTo(12, earBaseY - 11, 12, earBaseY - 6, 11, earBaseY - 2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Right ear fur tufts
-            ctx.strokeStyle = shadeColor(skin.bodyColor, 25);
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.moveTo(10, earBaseY - 17);
-            ctx.lineTo(9, earBaseY - 21);
-            ctx.moveTo(11, earBaseY - 16);
-            ctx.lineTo(12, earBaseY - 19);
-            ctx.stroke();
-            // Inner ear fur
-            ctx.strokeStyle = shadeColor(skin.earInner, 20);
-            ctx.lineWidth = 0.8;
-            for (let f = 0; f < 3; f++) {
-                ctx.beginPath();
-                ctx.moveTo(10 - f * 0.8, earBaseY - 3 - f * 2);
-                ctx.lineTo(10 - f * 0.5, earBaseY - 6 - f * 2);
-                ctx.stroke();
-            }
-
-            // === EYES - realistic almond-shaped cat eyes ===
-            const eyeY = headY - 1;
-            const leftEyeX = -6;
-            const rightEyeX = 6;
-            
-            // Eye sockets (shadowed area around eyes)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -15);
-            ctx.beginPath();
-            ctx.ellipse(leftEyeX, eyeY, 6.5, 5, 0.15, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(rightEyeX, eyeY, 6.5, 5, -0.15, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eye shape - almond/pointed at corners (realistic cat eye shape)
-            ctx.fillStyle = '#FCFCFC';
-            ctx.beginPath();
-            ctx.moveTo(leftEyeX - 5.5, eyeY);
-            ctx.bezierCurveTo(leftEyeX - 4, eyeY - 4.5, leftEyeX + 4, eyeY - 4.5, leftEyeX + 5.5, eyeY);
-            ctx.bezierCurveTo(leftEyeX + 4, eyeY + 4, leftEyeX - 4, eyeY + 4, leftEyeX - 5.5, eyeY);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(rightEyeX - 5.5, eyeY);
-            ctx.bezierCurveTo(rightEyeX - 4, eyeY - 4.5, rightEyeX + 4, eyeY - 4.5, rightEyeX + 5.5, eyeY);
-            ctx.bezierCurveTo(rightEyeX + 4, eyeY + 4, rightEyeX - 4, eyeY + 4, rightEyeX - 5.5, eyeY);
-            ctx.fill();
-
-            // Iris with realistic depth and color variation
-            const irisGradient = ctx.createRadialGradient(leftEyeX - 0.5, eyeY - 1, 0, leftEyeX, eyeY, 4.5);
-            irisGradient.addColorStop(0, shadeColor(skin.eyeColor, 40));
-            irisGradient.addColorStop(0.3, shadeColor(skin.eyeColor, 20));
-            irisGradient.addColorStop(0.7, skin.eyeColor);
-            irisGradient.addColorStop(0.9, shadeColor(skin.eyeColor, -25));
-            irisGradient.addColorStop(1, shadeColor(skin.eyeColor, -40));
-            ctx.fillStyle = irisGradient;
-            ctx.beginPath();
-            ctx.ellipse(leftEyeX, eyeY, 4.2, 4.2, 0, 0, Math.PI * 2);
-            ctx.fill();
-            
-            const irisGradient2 = ctx.createRadialGradient(rightEyeX - 0.5, eyeY - 1, 0, rightEyeX, eyeY, 4.5);
-            irisGradient2.addColorStop(0, shadeColor(skin.eyeColor, 40));
-            irisGradient2.addColorStop(0.3, shadeColor(skin.eyeColor, 20));
-            irisGradient2.addColorStop(0.7, skin.eyeColor);
-            irisGradient2.addColorStop(0.9, shadeColor(skin.eyeColor, -25));
-            irisGradient2.addColorStop(1, shadeColor(skin.eyeColor, -40));
-            ctx.fillStyle = irisGradient2;
-            ctx.beginPath();
-            ctx.ellipse(rightEyeX, eyeY, 4.2, 4.2, 0, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Iris detail - radial lines (stroma pattern)
-            ctx.strokeStyle = shadeColor(skin.eyeColor, -20);
-            ctx.lineWidth = 0.3;
-            ctx.globalAlpha = 0.4;
-            for (let r = 0; r < 12; r++) {
-                const angle = (r / 12) * Math.PI * 2;
-                ctx.beginPath();
-                ctx.moveTo(leftEyeX + Math.cos(angle) * 1.5, eyeY + Math.sin(angle) * 1.5);
-                ctx.lineTo(leftEyeX + Math.cos(angle) * 3.8, eyeY + Math.sin(angle) * 3.8);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(rightEyeX + Math.cos(angle) * 1.5, eyeY + Math.sin(angle) * 1.5);
-                ctx.lineTo(rightEyeX + Math.cos(angle) * 3.8, eyeY + Math.sin(angle) * 3.8);
-                ctx.stroke();
-            }
-            ctx.globalAlpha = 1;
-
-            // Pupils (vertical slits - the classic cat look)
-            const pupilGradient = ctx.createLinearGradient(0, eyeY - 4, 0, eyeY + 4);
-            pupilGradient.addColorStop(0, '#0a0a0a');
-            pupilGradient.addColorStop(0.5, '#1a1a1a');
-            pupilGradient.addColorStop(1, '#0a0a0a');
-            ctx.fillStyle = pupilGradient;
-            ctx.beginPath();
-            ctx.ellipse(leftEyeX, eyeY, 1.3, 3.8, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(rightEyeX, eyeY, 1.3, 3.8, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eye shine - primary bright reflection (window light)
-            ctx.fillStyle = 'rgba(255,255,255,0.95)';
-            ctx.beginPath();
-            ctx.ellipse(leftEyeX - 1.5, eyeY - 1.8, 1.6, 1.3, -0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(rightEyeX - 1.5, eyeY - 1.8, 1.6, 1.3, -0.2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Secondary smaller shine (opposite side reflection)
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.beginPath();
-            ctx.arc(leftEyeX + 2, eyeY + 1.5, 0.7, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(rightEyeX + 2, eyeY + 1.5, 0.7, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Subtle glow around catchlight
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.beginPath();
-            ctx.ellipse(leftEyeX - 1.5, eyeY - 1.8, 2.5, 2, -0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(rightEyeX - 1.5, eyeY - 1.8, 2.5, 2, -0.2, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eye liner - dark edge for definition
-            ctx.strokeStyle = shadeColor(skin.bodyColor, -45);
-            ctx.lineWidth = 0.9;
-            ctx.beginPath();
-            ctx.moveTo(leftEyeX - 5.5, eyeY);
-            ctx.bezierCurveTo(leftEyeX - 4, eyeY - 4.5, leftEyeX + 4, eyeY - 4.5, leftEyeX + 5.5, eyeY);
-            ctx.bezierCurveTo(leftEyeX + 4, eyeY + 4, leftEyeX - 4, eyeY + 4, leftEyeX - 5.5, eyeY);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(rightEyeX - 5.5, eyeY);
-            ctx.bezierCurveTo(rightEyeX - 4, eyeY - 4.5, rightEyeX + 4, eyeY - 4.5, rightEyeX + 5.5, eyeY);
-            ctx.bezierCurveTo(rightEyeX + 4, eyeY + 4, rightEyeX - 4, eyeY + 4, rightEyeX - 5.5, eyeY);
-            ctx.stroke();
-            
-            // Inner corner tear duct detail
-            ctx.fillStyle = shadeColor(skin.earInner, -15);
-            ctx.beginPath();
-            ctx.ellipse(leftEyeX - 5, eyeY + 0.5, 1, 0.8, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(rightEyeX - 5, eyeY + 0.5, 1, 0.8, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // === NOSE - realistic cat nose with leather texture ===
-            const noseY = headY + 6;
-            
-            // Nose bridge (slight bump)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -8);
-            ctx.beginPath();
-            ctx.moveTo(-2.5, noseY - 5);
-            ctx.quadraticCurveTo(0, noseY - 6, 2.5, noseY - 5);
-            ctx.quadraticCurveTo(1.5, noseY - 2, 0, noseY - 1);
-            ctx.quadraticCurveTo(-1.5, noseY - 2, -2.5, noseY - 5);
-            ctx.fill();
-
-            // Main nose leather (distinctive heart/shield shape)
-            const noseGradient = ctx.createRadialGradient(-1, noseY - 2, 0, 0, noseY, 4);
-            noseGradient.addColorStop(0, shadeColor(skin.noseColor, 25));
-            noseGradient.addColorStop(0.5, skin.noseColor);
-            noseGradient.addColorStop(1, shadeColor(skin.noseColor, -20));
-            ctx.fillStyle = noseGradient;
-            ctx.beginPath();
-            ctx.moveTo(0, noseY - 3);
-            ctx.bezierCurveTo(-3.5, noseY - 2, -4, noseY + 1, -2.5, noseY + 2);
-            ctx.quadraticCurveTo(0, noseY + 3.5, 2.5, noseY + 2);
-            ctx.bezierCurveTo(4, noseY + 1, 3.5, noseY - 2, 0, noseY - 3);
-            ctx.fill();
-            
-            // Nose texture (subtle bumpy leather look)
-            ctx.fillStyle = shadeColor(skin.noseColor, -10);
+            // Tummy (lighter)
+            ctx.fillStyle = skin.stripeColor;
             ctx.globalAlpha = 0.3;
-            for (let i = 0; i < 5; i++) {
-                const tx = -2 + seededRandom() * 4;
-                const ty = noseY - 1 + seededRandom() * 2;
-                ctx.beginPath();
-                ctx.arc(tx, ty, 0.4 + seededRandom() * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            ctx.beginPath();
+            ctx.ellipse(5, 8 + bounce, 10, 12, 0.2, 0, Math.PI * 2);
+            ctx.fill();
             ctx.globalAlpha = 1;
+
+            // === FRONT LEGS ===
+            const frontLegY = 18 + bounce + legAnim;
+            // Back front leg
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(6, frontLegY - 2, 5, 9, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.ellipse(5, frontLegY + 5, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
             
-            // Nose highlight (wet look)
+            // Front front leg
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(12, frontLegY - 2, 5, 9, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.ellipse(13, frontLegY + 5, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === HEAD - big cute round head ===
+            const headY = -14 + bounce;
+            
+            // Head shadow
+            ctx.fillStyle = skin.stripeColor;
+            ctx.beginPath();
+            ctx.ellipse(0, headY + 2, 16, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Main head
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(0, headY, 16, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === EARS - cute triangular ears ===
+            // Left ear
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.moveTo(-14, headY - 5);
+            ctx.lineTo(-10, headY - 22);
+            ctx.lineTo(-4, headY - 8);
+            ctx.closePath();
+            ctx.fill();
+            // Left ear inner
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.moveTo(-12, headY - 7);
+            ctx.lineTo(-10, headY - 18);
+            ctx.lineTo(-6, headY - 9);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Right ear
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.moveTo(14, headY - 5);
+            ctx.lineTo(10, headY - 22);
+            ctx.lineTo(4, headY - 8);
+            ctx.closePath();
+            ctx.fill();
+            // Right ear inner
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.moveTo(12, headY - 7);
+            ctx.lineTo(10, headY - 18);
+            ctx.lineTo(6, headY - 9);
+            ctx.closePath();
+            ctx.fill();
+
+            // === FACE ===
+            // Cheeks (fluffy)
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(-12, headY + 5, 6, 5, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(12, headY + 5, 6, 5, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === EYES - big cute anime-style eyes ===
+            const eyeY = headY - 1;
+            
+            // Eye whites
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.ellipse(-6, eyeY, 6, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, eyeY, 6, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Iris
+            ctx.fillStyle = skin.eyeColor;
+            ctx.beginPath();
+            ctx.ellipse(-6, eyeY + 1, 4.5, 5.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, eyeY + 1, 4.5, 5.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pupils
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.ellipse(-6, eyeY + 1, 2.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, eyeY + 1, 2.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eye shine (big sparkle!)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-7.5, eyeY - 2, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(4.5, eyeY - 2, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Small secondary shine
+            ctx.beginPath();
+            ctx.arc(-5, eyeY + 3, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(7, eyeY + 3, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === NOSE - cute triangle nose ===
+            ctx.fillStyle = skin.noseColor;
+            ctx.beginPath();
+            ctx.moveTo(0, headY + 5);
+            ctx.lineTo(-3, headY + 9);
+            ctx.lineTo(3, headY + 9);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Nose shine
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.beginPath();
-            ctx.ellipse(-1.2, noseY - 1.5, 1.3, 0.9, -0.4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Nostrils (comma-shaped)
-            ctx.fillStyle = shadeColor(skin.noseColor, -40);
-            ctx.beginPath();
-            ctx.ellipse(-1.5, noseY + 0.5, 1, 0.6, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(1.5, noseY + 0.5, 1, 0.6, -0.3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Nostril inner shadow
-            ctx.fillStyle = shadeColor(skin.noseColor, -55);
-            ctx.beginPath();
-            ctx.ellipse(-1.5, noseY + 0.3, 0.5, 0.3, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(1.5, noseY + 0.3, 0.5, 0.3, -0.3, 0, Math.PI * 2);
+            ctx.arc(-1, headY + 6, 1.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // === MUZZLE AND MOUTH ===
-            const muzzleY = noseY + 4;
-            
-            // Whisker pads (puffy cheek area) - prominent in cats
-            ctx.fillStyle = shadeColor(skin.bodyColor, 30);
+            // === MOUTH - cute cat mouth ===
+            ctx.strokeStyle = skin.stripeColor;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            // Center line
             ctx.beginPath();
-            ctx.ellipse(-4.5, muzzleY, 5, 4.5, 0.15, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(0, headY + 9);
+            ctx.lineTo(0, headY + 12);
+            ctx.stroke();
+            // Left curve
             ctx.beginPath();
-            ctx.ellipse(4.5, muzzleY, 5, 4.5, -0.15, 0, Math.PI * 2);
-            ctx.fill();
-            // Whisker pad highlights
-            ctx.fillStyle = shadeColor(skin.bodyColor, 45);
+            ctx.arc(-4, headY + 12, 4, -0.3, Math.PI * 0.7, false);
+            ctx.stroke();
+            // Right curve
             ctx.beginPath();
-            ctx.ellipse(-4, muzzleY - 1, 2.5, 2, 0.1, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(4, muzzleY - 1, 2.5, 2, -0.1, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.arc(4, headY + 12, 4, Math.PI * 0.3, Math.PI + 0.3, false);
+            ctx.stroke();
 
-            // Philtrum (groove from nose to mouth)
-            ctx.strokeStyle = shadeColor(skin.bodyColor, -25);
+            // === WHISKERS - simple cute whiskers ===
+            ctx.strokeStyle = 'rgba(100,100,100,0.6)';
             ctx.lineWidth = 1.5;
-            ctx.lineCap = 'round';
+            // Left whiskers
             ctx.beginPath();
-            ctx.moveTo(0, noseY + 2);
-            ctx.lineTo(0, muzzleY + 1);
-            ctx.stroke();
-
-            // Upper lip (inverted W shape)
-            ctx.strokeStyle = shadeColor(skin.bodyColor, -30);
-            ctx.lineWidth = 1.4;
-            ctx.beginPath();
-            ctx.moveTo(-5, muzzleY + 2);
-            ctx.quadraticCurveTo(-2.5, muzzleY + 1, 0, muzzleY + 1);
-            ctx.quadraticCurveTo(2.5, muzzleY + 1, 5, muzzleY + 2);
-            ctx.stroke();
-            
-            // Lower lip curves
-            ctx.lineWidth = 1.2;
-            ctx.beginPath();
-            ctx.arc(-3, muzzleY + 2.5, 2.5, -0.3, Math.PI * 0.6, false);
+            ctx.moveTo(-10, headY + 6);
+            ctx.lineTo(-25, headY + 3);
             ctx.stroke();
             ctx.beginPath();
-            ctx.arc(3, muzzleY + 2.5, 2.5, Math.PI * 0.4, Math.PI + 0.3, false);
+            ctx.moveTo(-10, headY + 8);
+            ctx.lineTo(-25, headY + 8);
             ctx.stroke();
-
-            // Chin
-            ctx.fillStyle = shadeColor(skin.bodyColor, 25);
             ctx.beginPath();
-            ctx.ellipse(0, muzzleY + 6, 4.5, 3.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Chin highlight
-            ctx.fillStyle = shadeColor(skin.bodyColor, 40);
-            ctx.beginPath();
-            ctx.ellipse(0, muzzleY + 5.5, 2.5, 2, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // === WHISKERS - realistic cat vibrissae ===
-            const whiskerBaseY = muzzleY - 1;
-            
-            // Whisker follicle dots (on whisker pads)
-            ctx.fillStyle = shadeColor(skin.bodyColor, -20);
-            const whiskerSpots = [
-                [-6, whiskerBaseY - 2], [-7, whiskerBaseY], [-6.5, whiskerBaseY + 2],
-                [6, whiskerBaseY - 2], [7, whiskerBaseY], [6.5, whiskerBaseY + 2]
-            ];
-            for (const [wx, wy] of whiskerSpots) {
-                ctx.beginPath();
-                ctx.arc(wx, wy, 0.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            // Main whiskers - varying thickness and slight natural curve
-            ctx.lineCap = 'round';
-            
-            // Left whiskers (3 main + 1 smaller)
-            const leftWhiskers = [
-                { startY: whiskerBaseY - 2, angle: -0.15, length: 28, thickness: 0.9 },
-                { startY: whiskerBaseY, angle: 0, length: 30, thickness: 1.0 },
-                { startY: whiskerBaseY + 2, angle: 0.12, length: 27, thickness: 0.85 },
-                { startY: whiskerBaseY + 3.5, angle: 0.25, length: 18, thickness: 0.6 }
-            ];
-            
-            for (const w of leftWhiskers) {
-                // Whisker shadow
-                ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-                ctx.lineWidth = w.thickness + 0.5;
-                ctx.beginPath();
-                ctx.moveTo(-7, w.startY + 0.5);
-                const endX = -7 - w.length;
-                const endY = w.startY + Math.sin(w.angle) * w.length * 0.5 + 0.5;
-                const ctrlX = -7 - w.length * 0.5;
-                const ctrlY = w.startY + w.angle * 8 + 0.5;
-                ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
-                ctx.stroke();
-                
-                // Main whisker with gradient effect
-                ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-                ctx.lineWidth = w.thickness;
-                ctx.beginPath();
-                ctx.moveTo(-7, w.startY);
-                ctx.quadraticCurveTo(ctrlX, ctrlY - 0.5, endX, endY - 0.5);
-                ctx.stroke();
-            }
-            
+            ctx.moveTo(-10, headY + 10);
+            ctx.lineTo(-25, headY + 13);
+            ctx.stroke();
             // Right whiskers
-            const rightWhiskers = [
-                { startY: whiskerBaseY - 2, angle: -0.15, length: 28, thickness: 0.9 },
-                { startY: whiskerBaseY, angle: 0, length: 30, thickness: 1.0 },
-                { startY: whiskerBaseY + 2, angle: 0.12, length: 27, thickness: 0.85 },
-                { startY: whiskerBaseY + 3.5, angle: 0.25, length: 18, thickness: 0.6 }
-            ];
-            
-            for (const w of rightWhiskers) {
-                // Shadow
-                ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-                ctx.lineWidth = w.thickness + 0.5;
-                ctx.beginPath();
-                ctx.moveTo(7, w.startY + 0.5);
-                const endX = 7 + w.length;
-                const endY = w.startY + Math.sin(w.angle) * w.length * 0.5 + 0.5;
-                const ctrlX = 7 + w.length * 0.5;
-                const ctrlY = w.startY + w.angle * 8 + 0.5;
-                ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
-                ctx.stroke();
-                
-                // Main whisker
-                ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-                ctx.lineWidth = w.thickness;
-                ctx.beginPath();
-                ctx.moveTo(7, w.startY);
-                ctx.quadraticCurveTo(ctrlX, ctrlY - 0.5, endX, endY - 0.5);
-                ctx.stroke();
-            }
-            
-            // Eyebrow whiskers (shorter, above eyes)
-            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-            ctx.lineWidth = 0.5;
             ctx.beginPath();
-            ctx.moveTo(-10, eyeY - 5);
-            ctx.quadraticCurveTo(-14, eyeY - 7, -17, eyeY - 6);
+            ctx.moveTo(10, headY + 6);
+            ctx.lineTo(25, headY + 3);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(10, eyeY - 5);
-            ctx.quadraticCurveTo(14, eyeY - 7, 17, eyeY - 6);
+            ctx.moveTo(10, headY + 8);
+            ctx.lineTo(25, headY + 8);
             ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(10, headY + 10);
+            ctx.lineTo(25, headY + 13);
+            ctx.stroke();
+
+            // === BLUSH - cute rosy cheeks ===
+            ctx.fillStyle = 'rgba(255, 150, 150, 0.35)';
+            ctx.beginPath();
+            ctx.ellipse(-11, headY + 5, 4, 2.5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(11, headY + 5, 4, 2.5, -0.2, 0, Math.PI * 2);
+            ctx.fill();
 
             // === HOLIDAY ACCESSORIES ===
             if (skin.hat === 'santa') {
                 ctx.fillStyle = '#C0392B';
                 ctx.beginPath();
-                ctx.moveTo(-15, -30 + bounce);
-                ctx.quadraticCurveTo(-5, -50 + bounce, 5, -55 + bounce);
-                ctx.quadraticCurveTo(10, -45 + bounce, 15, -30 + bounce);
+                ctx.moveTo(-14, headY - 10);
+                ctx.quadraticCurveTo(-5, headY - 35, 8, headY - 40);
+                ctx.quadraticCurveTo(12, headY - 30, 14, headY - 10);
                 ctx.closePath();
                 ctx.fill();
                 // White trim
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.ellipse(0, -30 + bounce, 18, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, headY - 10, 16, 5, 0, 0, Math.PI * 2);
                 ctx.fill();
                 // Pompom
                 ctx.beginPath();
-                ctx.arc(5, -55 + bounce, 6, 0, Math.PI * 2);
+                ctx.arc(8, headY - 40, 6, 0, Math.PI * 2);
                 ctx.fill();
             } else if (skin.hat === 'elf') {
                 ctx.fillStyle = '#27AE60';
                 ctx.beginPath();
-                ctx.moveTo(-12, -30 + bounce);
-                ctx.quadraticCurveTo(0, -45 + bounce, 8, -55 + bounce);
-                ctx.quadraticCurveTo(10, -40 + bounce, 12, -30 + bounce);
+                ctx.moveTo(-12, headY - 10);
+                ctx.quadraticCurveTo(0, headY - 30, 10, headY - 42);
+                ctx.quadraticCurveTo(12, headY - 28, 12, headY - 10);
                 ctx.closePath();
                 ctx.fill();
                 ctx.fillStyle = '#E74C3C';
                 ctx.beginPath();
-                ctx.ellipse(0, -30 + bounce, 15, 4, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, headY - 10, 14, 4, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#F1C40F';
                 ctx.beginPath();
-                ctx.arc(8, -55 + bounce, 5, 0, Math.PI * 2);
+                ctx.arc(10, headY - 42, 5, 0, Math.PI * 2);
                 ctx.fill();
             } else if (skin.hat === 'pilgrim') {
                 ctx.fillStyle = '#2C3E50';
-                ctx.fillRect(-13, -48 + bounce, 26, 22);
+                ctx.fillRect(-12, headY - 32, 24, 20);
                 ctx.beginPath();
-                ctx.ellipse(0, -27 + bounce, 20, 4, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, headY - 12, 18, 4, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#F39C12';
-                ctx.fillRect(-3, -42 + bounce, 6, 10);
+                ctx.fillRect(-3, headY - 28, 6, 10);
             }
 
             if (skin.accessory === 'scarf') {
-                // Knitted scarf texture
                 ctx.fillStyle = '#E74C3C';
                 ctx.beginPath();
-                ctx.ellipse(0, -2 + bounce, 14, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, 0 + bounce, 16, 6, 0, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#27AE60';
                 ctx.beginPath();
-                ctx.ellipse(-10, -2 + bounce, 4, 5, 0.2, 0, Math.PI * 2);
+                ctx.ellipse(-12, 0 + bounce, 5, 6, 0.2, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.ellipse(10, -2 + bounce, 4, 5, -0.2, 0, Math.PI * 2);
+                ctx.ellipse(12, 0 + bounce, 5, 6, -0.2, 0, Math.PI * 2);
                 ctx.fill();
                 // Scarf tail
                 ctx.fillStyle = '#E74C3C';
                 ctx.beginPath();
-                ctx.moveTo(12, -2 + bounce);
-                ctx.quadraticCurveTo(18, 5 + bounce, 16, 18 + bounce);
-                ctx.lineTo(20, 18 + bounce);
-                ctx.quadraticCurveTo(24, 5 + bounce, 14, -2 + bounce);
+                ctx.moveTo(14, 0 + bounce);
+                ctx.quadraticCurveTo(20, 8 + bounce, 18, 22 + bounce);
+                ctx.lineTo(22, 22 + bounce);
+                ctx.quadraticCurveTo(26, 8 + bounce, 16, 0 + bounce);
                 ctx.closePath();
                 ctx.fill();
-                // Fringe
-                ctx.strokeStyle = '#E74C3C';
-                ctx.lineWidth = 1.5;
-                for (let f = 0; f < 3; f++) {
-                    ctx.beginPath();
-                    ctx.moveTo(16 + f * 1.5, 18 + bounce);
-                    ctx.lineTo(15 + f * 2, 24 + bounce);
-                    ctx.stroke();
-                }
             } else if (skin.accessory === 'leaves') {
                 const leafColors = ['#E74C3C', '#F39C12', '#D35400', '#C0392B'];
                 for (let i = 0; i < 4; i++) {
                     ctx.fillStyle = leafColors[i];
                     ctx.beginPath();
                     const lx = -10 + i * 7;
-                    const ly = -34 + bounce + Math.sin(i) * 2;
+                    const ly = headY - 16 + Math.sin(i) * 2;
                     ctx.ellipse(lx, ly, 5, 3, Math.PI / 4 + i * 0.4, 0, Math.PI * 2);
                     ctx.fill();
-                    // Leaf vein
-                    ctx.strokeStyle = shadeColor(leafColors[i], -20);
-                    ctx.lineWidth = 0.5;
-                    ctx.beginPath();
-                    ctx.moveTo(lx - 3, ly + 2);
-                    ctx.lineTo(lx + 3, ly - 2);
-                    ctx.stroke();
                 }
             }
 
@@ -1947,64 +1334,141 @@
             ctx.save();
 
             if (plat.type === 'ground') {
-                // Ground - grass
-                ctx.fillStyle = '#8B4513';
+                // Ground - snowy
+                ctx.fillStyle = '#4a5568';
                 ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height);
-                ctx.fillStyle = '#27AE60';
+                // Snow layer on top
+                ctx.fillStyle = '#e8f4f8';
                 ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, 15);
-
-                // Grass blades
-                ctx.strokeStyle = '#2ECC71';
-                ctx.lineWidth = 2;
-                for (let i = 0; i < plat.width; i += 10) {
+                // Snow texture bumps
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < plat.width; i += 20) {
                     ctx.beginPath();
-                    ctx.moveTo(plat.x - camera.x + i, plat.y - camera.y);
-                    ctx.lineTo(plat.x - camera.x + i + 3, plat.y - camera.y - 8);
-                    ctx.stroke();
+                    ctx.ellipse(plat.x - camera.x + i + 10, plat.y - camera.y + 5, 12, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Sparkles on snow
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                for (let i = 0; i < plat.width; i += 30) {
+                    const sparkle = Math.sin(Date.now() / 300 + i) > 0.7;
+                    if (sparkle) {
+                        ctx.beginPath();
+                        ctx.arc(plat.x - camera.x + i + 15, plat.y - camera.y + 3, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             } else if (plat.type === 'goal') {
-                // Goal platform - rainbow/special
+                // Goal platform - Christmas present style!
                 const gradient = ctx.createLinearGradient(
                     plat.x - camera.x, 0,
                     plat.x - camera.x + plat.width, 0
                 );
-                gradient.addColorStop(0, '#FF6B9D');
-                gradient.addColorStop(0.5, '#A855F7');
-                gradient.addColorStop(1, '#6366F1');
+                gradient.addColorStop(0, '#dc2626');
+                gradient.addColorStop(0.5, '#ef4444');
+                gradient.addColorStop(1, '#dc2626');
                 ctx.fillStyle = gradient;
                 ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height);
+                
+                // Gold ribbon
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillRect(plat.x - camera.x + plat.width / 2 - 8, plat.y - camera.y, 16, plat.height);
+                
+                // Bow on top
+                ctx.fillStyle = '#fbbf24';
+                const bowX = plat.x - camera.x + plat.width / 2;
+                const bowY = plat.y - camera.y - 15;
+                // Left loop
+                ctx.beginPath();
+                ctx.ellipse(bowX - 15, bowY, 12, 8, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Right loop
+                ctx.beginPath();
+                ctx.ellipse(bowX + 15, bowY, 12, 8, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Center knot
+                ctx.beginPath();
+                ctx.arc(bowX, bowY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                // Ribbon tails
+                ctx.beginPath();
+                ctx.moveTo(bowX - 5, bowY + 5);
+                ctx.quadraticCurveTo(bowX - 15, bowY + 25, bowX - 20, bowY + 35);
+                ctx.lineTo(bowX - 12, bowY + 35);
+                ctx.quadraticCurveTo(bowX - 8, bowY + 20, bowX, bowY + 5);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(bowX + 5, bowY + 5);
+                ctx.quadraticCurveTo(bowX + 15, bowY + 25, bowX + 20, bowY + 35);
+                ctx.lineTo(bowX + 12, bowY + 35);
+                ctx.quadraticCurveTo(bowX + 8, bowY + 20, bowX, bowY + 5);
+                ctx.fill();
 
-                // Stars
+                // Sparkles
                 ctx.fillStyle = '#FFD700';
-                for (let i = 0; i < 3; i++) {
-                    const starX = plat.x - camera.x + 30 + i * 40;
-                    const starY = plat.y - camera.y - 20 + Math.sin(Date.now() / 300 + i) * 5;
-                    drawStar(starX, starY, 8);
+                for (let i = 0; i < 5; i++) {
+                    const sparkleX = plat.x - camera.x + 20 + i * 25;
+                    const sparkleY = plat.y - camera.y - 30 + Math.sin(Date.now() / 200 + i) * 8;
+                    const sparkleSize = 3 + Math.sin(Date.now() / 150 + i * 2) * 2;
+                    drawStar(sparkleX, sparkleY, sparkleSize);
                 }
             } else {
-                // Regular/moving platform
+                // Regular/moving platform - icy/snowy look
                 const isMoving = plat.type === 'moving';
-                ctx.fillStyle = isMoving ? '#A855F7' : '#FF6B9D';
 
                 // Platform shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
                 ctx.fillRect(plat.x - camera.x + 3, plat.y - camera.y + 3, plat.width, plat.height);
 
-                // Platform body
-                ctx.fillStyle = isMoving ? '#A855F7' : '#FF6B9D';
+                // Platform body - icy blue or Christmas green for moving
+                if (isMoving) {
+                    const iceGradient = ctx.createLinearGradient(
+                        plat.x - camera.x, plat.y - camera.y,
+                        plat.x - camera.x, plat.y - camera.y + plat.height
+                    );
+                    iceGradient.addColorStop(0, '#4ade80');
+                    iceGradient.addColorStop(0.5, '#22c55e');
+                    iceGradient.addColorStop(1, '#16a34a');
+                    ctx.fillStyle = iceGradient;
+                } else {
+                    const iceGradient = ctx.createLinearGradient(
+                        plat.x - camera.x, plat.y - camera.y,
+                        plat.x - camera.x, plat.y - camera.y + plat.height
+                    );
+                    iceGradient.addColorStop(0, '#e0f2fe');
+                    iceGradient.addColorStop(0.3, '#7dd3fc');
+                    iceGradient.addColorStop(0.7, '#38bdf8');
+                    iceGradient.addColorStop(1, '#0ea5e9');
+                    ctx.fillStyle = iceGradient;
+                }
                 ctx.beginPath();
                 ctx.roundRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height, 8);
                 ctx.fill();
 
-                // Highlight
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.fillRect(plat.x - camera.x + 5, plat.y - camera.y + 2, plat.width - 10, 5);
+                // Snow on top of platform
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.ellipse(plat.x - camera.x + plat.width * 0.2, plat.y - camera.y, plat.width * 0.25, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(plat.x - camera.x + plat.width * 0.6, plat.y - camera.y - 1, plat.width * 0.3, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(plat.x - camera.x + plat.width * 0.85, plat.y - camera.y, plat.width * 0.15, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
 
-                // Moving indicator
+                // Ice shine
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillRect(plat.x - camera.x + 5, plat.y - camera.y + 4, plat.width * 0.3, 3);
+
+                // Moving indicator - Christmas ornament style
                 if (isMoving) {
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(plat.x - camera.x + plat.width / 2, plat.y - camera.y + plat.height / 2, 5, 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.fillStyle = 'rgba(255,255,255,0.5)';
                     ctx.beginPath();
-                    ctx.arc(plat.x - camera.x + plat.width / 2, plat.y - camera.y + plat.height / 2, 4, 0, Math.PI * 2);
+                    ctx.arc(plat.x - camera.x + plat.width / 2 - 1.5, plat.y - camera.y + plat.height / 2 - 1.5, 2, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
@@ -2055,42 +1519,199 @@
             ctx.fillText('🧲', cat.x + cat.width / 2 - camera.x - 10, cat.y - camera.y - 30);
         }
 
+        // Snowflakes array for background
+        let snowflakes = [];
+        const NUM_SNOWFLAKES = 150;
+        
+        function initSnowflakes() {
+            snowflakes = [];
+            for (let i = 0; i < NUM_SNOWFLAKES; i++) {
+                snowflakes.push({
+                    x: Math.random() * 2000,
+                    y: Math.random() * canvas.height,
+                    size: 2 + Math.random() * 4,
+                    speed: 1 + Math.random() * 2,
+                    wobble: Math.random() * Math.PI * 2,
+                    wobbleSpeed: 0.02 + Math.random() * 0.03
+                });
+            }
+        }
+        
+        // Initialize snowflakes
+        initSnowflakes();
+
         function drawBackground() {
-            // Sky gradient
+            // Winter night sky gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#87CEEB');
-            gradient.addColorStop(0.5, '#B0E0E6');
-            gradient.addColorStop(1, '#98D8C8');
+            gradient.addColorStop(0, '#1a1a3e');
+            gradient.addColorStop(0.3, '#2d3a6d');
+            gradient.addColorStop(0.6, '#4a6fa5');
+            gradient.addColorStop(1, '#87a8c3');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Clouds
+            // Stars in the sky
             ctx.fillStyle = 'rgba(255,255,255,0.8)';
-            const cloudOffset = (Date.now() / 50) % (canvas.width + 200);
-            for (let i = 0; i < 5; i++) {
-                const cloudX = (i * 200 + cloudOffset) % (canvas.width + 200) - 100;
-                const cloudY = 50 + i * 40;
-                drawCloud(cloudX, cloudY);
+            for (let i = 0; i < 50; i++) {
+                const starX = (i * 73 + Math.sin(i) * 100) % canvas.width;
+                const starY = (i * 31 + Math.cos(i) * 50) % (canvas.height * 0.4);
+                const twinkle = 0.5 + Math.sin(Date.now() / 500 + i) * 0.5;
+                ctx.globalAlpha = twinkle;
+                ctx.beginPath();
+                ctx.arc(starX, starY, 1 + (i % 3) * 0.5, 0, Math.PI * 2);
+                ctx.fill();
             }
+            ctx.globalAlpha = 1;
 
-            // Distant mountains
-            ctx.fillStyle = '#98D8C8';
+            // Moon
+            ctx.fillStyle = '#fffde7';
+            ctx.shadowColor = '#fffde7';
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Moon craters (subtle)
+            ctx.fillStyle = 'rgba(200,200,180,0.3)';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 110, 70, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(canvas.width - 90, 90, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Snowy mountains in background
+            ctx.fillStyle = '#5a7a9a';
             ctx.beginPath();
             ctx.moveTo(0, canvas.height);
-            for (let x = 0; x < canvas.width; x += 100) {
-                ctx.lineTo(x, canvas.height - 100 - Math.sin(x / 200) * 50);
-            }
+            ctx.lineTo(0, canvas.height - 200);
+            ctx.lineTo(150, canvas.height - 320);
+            ctx.lineTo(300, canvas.height - 180);
+            ctx.lineTo(450, canvas.height - 280);
+            ctx.lineTo(600, canvas.height - 150);
+            ctx.lineTo(750, canvas.height - 250);
+            ctx.lineTo(900, canvas.height - 180);
+            ctx.lineTo(canvas.width, canvas.height - 220);
             ctx.lineTo(canvas.width, canvas.height);
+            ctx.closePath();
             ctx.fill();
+            
+            // Snow caps on mountains
+            ctx.fillStyle = '#e8f4f8';
+            ctx.beginPath();
+            ctx.moveTo(130, canvas.height - 300);
+            ctx.lineTo(150, canvas.height - 320);
+            ctx.lineTo(170, canvas.height - 295);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(430, canvas.height - 260);
+            ctx.lineTo(450, canvas.height - 280);
+            ctx.lineTo(470, canvas.height - 255);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(730, canvas.height - 230);
+            ctx.lineTo(750, canvas.height - 250);
+            ctx.lineTo(770, canvas.height - 225);
+            ctx.closePath();
+            ctx.fill();
+
+            // Snowy ground glow
+            const snowGlow = ctx.createLinearGradient(0, canvas.height - 100, 0, canvas.height);
+            snowGlow.addColorStop(0, 'rgba(200, 220, 240, 0)');
+            snowGlow.addColorStop(1, 'rgba(200, 220, 240, 0.3)');
+            ctx.fillStyle = snowGlow;
+            ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+
+            // Draw falling snow
+            ctx.fillStyle = 'white';
+            snowflakes.forEach(flake => {
+                // Update snowflake position
+                flake.y += flake.speed;
+                flake.wobble += flake.wobbleSpeed;
+                flake.x += Math.sin(flake.wobble) * 0.5;
+                
+                // Reset if off screen
+                if (flake.y > canvas.height + 10) {
+                    flake.y = -10;
+                    flake.x = Math.random() * 2000;
+                }
+                
+                // Draw snowflake (accounting for camera)
+                const screenX = (flake.x - camera.x * 0.3) % (canvas.width + 100);
+                if (screenX > -10 && screenX < canvas.width + 10) {
+                    ctx.globalAlpha = 0.7 + Math.sin(flake.wobble) * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(screenX, flake.y, flake.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            ctx.globalAlpha = 1;
+
+            // Distant pine trees silhouette
+            ctx.fillStyle = '#2a4a5a';
+            for (let i = 0; i < 8; i++) {
+                const treeX = (i * 150 + 50 - camera.x * 0.1) % (canvas.width + 200) - 50;
+                const treeY = canvas.height - 120 - (i % 3) * 20;
+                drawPineTree(treeX, treeY, 0.6 + (i % 3) * 0.1);
+            }
         }
 
-        function drawCloud(x, y) {
+        function drawPineTree(x, y, scale) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Tree trunk
+            ctx.fillStyle = '#3d2817';
+            ctx.fillRect(-5, 0, 10, 30);
+            
+            // Tree layers
+            ctx.fillStyle = '#1a3a2a';
             ctx.beginPath();
-            ctx.arc(x, y, 25, 0, Math.PI * 2);
-            ctx.arc(x + 25, y - 10, 30, 0, Math.PI * 2);
-            ctx.arc(x + 50, y, 25, 0, Math.PI * 2);
-            ctx.arc(x + 25, y + 10, 20, 0, Math.PI * 2);
+            ctx.moveTo(0, -80);
+            ctx.lineTo(-25, -30);
+            ctx.lineTo(25, -30);
+            ctx.closePath();
             ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -55);
+            ctx.lineTo(-35, 0);
+            ctx.lineTo(35, 0);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -25);
+            ctx.lineTo(-40, 30);
+            ctx.lineTo(40, 30);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Snow on tree
+            ctx.fillStyle = '#e8f4f8';
+            ctx.beginPath();
+            ctx.moveTo(0, -80);
+            ctx.lineTo(-8, -60);
+            ctx.lineTo(8, -60);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(-20, -30, 8, 4, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(18, -30, 7, 4, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(-28, 0, 10, 5, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(25, 2, 9, 4, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
         }
 
         // ============================================
