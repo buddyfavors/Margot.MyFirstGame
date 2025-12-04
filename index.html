@@ -265,7 +265,7 @@
         <!-- Menu Overlay -->
         <div id="menuOverlay">
             <h1 class="game-title">🐱 Margot's Cat Center 🐱</h1>
-            <p class="subtitle">Choose your adorable cat!</p>
+            <p class="subtitle">Click a cat to play!</p>
             
             <div class="skin-selector" id="skinSelector">
                 <!-- Skins will be added by JavaScript -->
@@ -282,7 +282,7 @@
                 </p>
             </div>
             
-            <button class="play-button" id="playButton">🎮 Play!</button>
+            <!-- Play button removed - clicking a cat starts the game -->
         </div>
 
         <!-- HUD -->
@@ -503,6 +503,8 @@
             selectedSkin = skin;
             document.querySelectorAll('.skin-option').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
+            // Start the game immediately when a cat is clicked
+            startGame();
         }
 
         function generateLevel() {
@@ -1397,7 +1399,6 @@
             keys[e.code] = false;
         });
 
-        document.getElementById('playButton').addEventListener('click', startGame);
         document.getElementById('restartButton').addEventListener('click', startGame);
 
         // ============================================
