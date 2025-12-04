@@ -858,212 +858,547 @@
             if (!facingRight) ctx.scale(-1, 1);
             ctx.scale(scale, scale);
 
-            const bounce = Math.sin(animFrame * 0.3) * 2;
+            const bounce = Math.sin(animFrame * 0.3) * 1.5;
+            const breathe = Math.sin(animFrame * 0.08) * 0.5;
 
-            // Body
-            ctx.fillStyle = skin.bodyColor;
-            ctx.beginPath();
-            ctx.ellipse(0, bounce, 18, 14, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Stripes
-            ctx.strokeStyle = skin.stripeColor;
-            ctx.lineWidth = 2;
-            for (let i = -1; i <= 1; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * 8 - 3, -8 + bounce);
-                ctx.lineTo(i * 8 + 3, 8 + bounce);
-                ctx.stroke();
-            }
-
-            // Patches for calico
-            if (skin.patches) {
-                ctx.fillStyle = skin.patches[0];
-                ctx.beginPath();
-                ctx.arc(-8, -5 + bounce, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = skin.patches[1];
-                ctx.beginPath();
-                ctx.arc(8, 5 + bounce, 5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Head
-            ctx.fillStyle = skin.bodyColor;
-            ctx.beginPath();
-            ctx.arc(0, -18 + bounce, 14, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Ears
-            ctx.fillStyle = skin.bodyColor;
-            ctx.beginPath();
-            ctx.moveTo(-12, -28 + bounce);
-            ctx.lineTo(-8, -38 + bounce);
-            ctx.lineTo(-4, -28 + bounce);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(4, -28 + bounce);
-            ctx.lineTo(8, -38 + bounce);
-            ctx.lineTo(12, -28 + bounce);
-            ctx.fill();
-
-            // Inner ears
-            ctx.fillStyle = skin.earInner;
-            ctx.beginPath();
-            ctx.moveTo(-10, -28 + bounce);
-            ctx.lineTo(-8, -34 + bounce);
-            ctx.lineTo(-6, -28 + bounce);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(6, -28 + bounce);
-            ctx.lineTo(8, -34 + bounce);
-            ctx.lineTo(10, -28 + bounce);
-            ctx.fill();
-
-            // Eyes
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.ellipse(-5, -20 + bounce, 5, 6, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(5, -20 + bounce, 5, 6, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Pupils
-            ctx.fillStyle = skin.eyeColor;
-            ctx.beginPath();
-            ctx.ellipse(-5, -19 + bounce, 3, 4, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(5, -19 + bounce, 3, 4, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eye shine
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(-6, -21 + bounce, 1.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(4, -21 + bounce, 1.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Nose
-            ctx.fillStyle = skin.noseColor;
-            ctx.beginPath();
-            ctx.moveTo(0, -14 + bounce);
-            ctx.lineTo(-3, -11 + bounce);
-            ctx.lineTo(3, -11 + bounce);
-            ctx.fill();
-
-            // Mouth
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(0, -11 + bounce);
-            ctx.lineTo(0, -8 + bounce);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(-3, -7 + bounce, 3, -0.3, Math.PI + 0.3, true);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(3, -7 + bounce, 3, -Math.PI - 0.3, 0.3, false);
-            ctx.stroke();
-
-            // Whiskers
-            ctx.strokeStyle = '#888';
-            ctx.lineWidth = 1;
-            for (let side = -1; side <= 1; side += 2) {
-                for (let i = 0; i < 3; i++) {
+            // Helper function for fur texture
+            function addFurTexture(baseX, baseY, width, height, color, density = 8) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 0.5;
+                for (let i = 0; i < density; i++) {
+                    const fx = baseX + (Math.random() - 0.5) * width;
+                    const fy = baseY + (Math.random() - 0.5) * height;
                     ctx.beginPath();
-                    ctx.moveTo(side * 8, -12 + i * 3 + bounce);
-                    ctx.lineTo(side * 20, -14 + i * 4 + bounce);
+                    ctx.moveTo(fx, fy);
+                    ctx.lineTo(fx + (Math.random() - 0.5) * 3, fy + Math.random() * 2);
                     ctx.stroke();
                 }
             }
 
-            // Tail
-            ctx.strokeStyle = skin.bodyColor;
-            ctx.lineWidth = 6;
+            // Darken/lighten color helper
+            function shadeColor(color, percent) {
+                const num = parseInt(color.replace('#', ''), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = Math.min(255, Math.max(0, (num >> 16) + amt));
+                const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+                const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+                return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+            }
+
+            const legAnim = Math.sin(animFrame * 0.4) * 4;
+            const tailWave = Math.sin(animFrame * 0.15) * 12;
+
+            // === TAIL (behind body) ===
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            // Tail shadow
+            ctx.strokeStyle = shadeColor(skin.bodyColor, -30);
+            ctx.lineWidth = 9;
             ctx.beginPath();
-            ctx.moveTo(-15, 5 + bounce);
-            const tailWave = Math.sin(animFrame * 0.2) * 8;
-            ctx.quadraticCurveTo(-25, -5 + tailWave + bounce, -30, -15 + tailWave + bounce);
+            ctx.moveTo(-14, 3 + bounce);
+            ctx.quadraticCurveTo(-22, -8 + tailWave + bounce, -28, -20 + tailWave + bounce);
+            ctx.bezierCurveTo(-32, -28 + tailWave + bounce, -35, -25 + tailWave + bounce, -33, -18 + tailWave + bounce);
             ctx.stroke();
-            ctx.strokeStyle = skin.stripeColor;
+            // Tail main
+            ctx.strokeStyle = skin.bodyColor;
+            ctx.lineWidth = 7;
+            ctx.stroke();
+            // Tail highlight
+            ctx.strokeStyle = shadeColor(skin.bodyColor, 20);
             ctx.lineWidth = 3;
             ctx.stroke();
+            // Tail tip fur
+            ctx.strokeStyle = skin.stripeColor;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-31, -16 + tailWave + bounce);
+            ctx.lineTo(-35, -22 + tailWave + bounce);
+            ctx.stroke();
 
-            // Legs
+            // === BACK LEGS (behind body) ===
+            // Back left leg
+            ctx.fillStyle = shadeColor(skin.bodyColor, -15);
+            ctx.beginPath();
+            ctx.ellipse(-10, 12 + bounce - legAnim * 0.5, 5, 8, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            // Back left paw
+            ctx.fillStyle = shadeColor(skin.earInner, -10);
+            ctx.beginPath();
+            ctx.ellipse(-10, 20 + bounce - legAnim * 0.5, 5, 3.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Toe beans
+            ctx.fillStyle = skin.noseColor;
+            for (let t = 0; t < 3; t++) {
+                ctx.beginPath();
+                ctx.arc(-12 + t * 2, 20 + bounce - legAnim * 0.5, 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // === BODY ===
+            // Body shadow
+            ctx.fillStyle = shadeColor(skin.bodyColor, -20);
+            ctx.beginPath();
+            ctx.ellipse(0, 3 + bounce + breathe, 20, 16 + breathe, 0.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main body
             ctx.fillStyle = skin.bodyColor;
-            const legAnim = Math.sin(animFrame * 0.4) * 3;
-            // Front legs
-            ctx.fillRect(8, 8 + bounce, 6, 12 + legAnim);
-            ctx.fillRect(-2, 8 + bounce, 6, 12 - legAnim);
-            // Paws
+            ctx.beginPath();
+            ctx.ellipse(0, bounce + breathe, 19, 15 + breathe, 0.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body highlight (top)
+            ctx.fillStyle = shadeColor(skin.bodyColor, 25);
+            ctx.beginPath();
+            ctx.ellipse(3, -8 + bounce + breathe, 10, 6, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Chest/belly fur (lighter area)
+            ctx.fillStyle = shadeColor(skin.bodyColor, 35);
+            ctx.beginPath();
+            ctx.ellipse(6, 5 + bounce + breathe, 8, 10, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fur texture on body
+            addFurTexture(0, bounce, 30, 20, shadeColor(skin.bodyColor, -25), 12);
+
+            // Stripes (more natural curved pattern)
+            ctx.strokeStyle = skin.stripeColor;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            for (let i = -1; i <= 1; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 7 - 2, -10 + bounce);
+                ctx.quadraticCurveTo(i * 7, bounce, i * 7 + 2, 10 + bounce);
+                ctx.stroke();
+            }
+
+            // Patches for calico (more natural shapes)
+            if (skin.patches) {
+                ctx.fillStyle = skin.patches[0];
+                ctx.beginPath();
+                ctx.ellipse(-9, -4 + bounce, 7, 5, 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = skin.patches[1];
+                ctx.beginPath();
+                ctx.ellipse(7, 6 + bounce, 6, 5, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // === FRONT LEGS ===
+            // Front right leg (further)
+            ctx.fillStyle = shadeColor(skin.bodyColor, -10);
+            ctx.beginPath();
+            ctx.moveTo(4, 10 + bounce);
+            ctx.quadraticCurveTo(2, 15 + bounce - legAnim, 3, 20 + bounce - legAnim);
+            ctx.lineTo(8, 20 + bounce - legAnim);
+            ctx.quadraticCurveTo(10, 15 + bounce - legAnim, 9, 10 + bounce);
+            ctx.closePath();
+            ctx.fill();
+            // Paw
             ctx.fillStyle = skin.earInner;
             ctx.beginPath();
-            ctx.ellipse(11, 20 + bounce + legAnim, 5, 3, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(1, 20 + bounce - legAnim, 5, 3, 0, 0, Math.PI * 2);
+            ctx.ellipse(5.5, 21 + bounce - legAnim, 5, 3.5, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Holiday accessories
+            // Front left leg (closer)
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.moveTo(10, 10 + bounce);
+            ctx.quadraticCurveTo(9, 15 + bounce + legAnim, 10, 20 + bounce + legAnim);
+            ctx.lineTo(16, 20 + bounce + legAnim);
+            ctx.quadraticCurveTo(17, 15 + bounce + legAnim, 16, 10 + bounce);
+            ctx.closePath();
+            ctx.fill();
+            // Paw with toe detail
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.ellipse(13, 21 + bounce + legAnim, 5.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Toe beans
+            ctx.fillStyle = skin.noseColor;
+            ctx.globalAlpha = 0.7;
+            for (let t = 0; t < 4; t++) {
+                ctx.beginPath();
+                ctx.ellipse(11 + t * 1.5, 21 + bounce + legAnim, 1, 0.8, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Main pad
+            ctx.beginPath();
+            ctx.ellipse(13, 22.5 + bounce + legAnim, 2, 1.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // === HEAD ===
+            // Head shadow
+            ctx.fillStyle = shadeColor(skin.bodyColor, -15);
+            ctx.beginPath();
+            ctx.ellipse(1, -15 + bounce, 16, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Main head - slightly oval, more cat-like
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(0, -17 + bounce, 15, 13, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head top highlight
+            ctx.fillStyle = shadeColor(skin.bodyColor, 20);
+            ctx.beginPath();
+            ctx.ellipse(-2, -24 + bounce, 8, 5, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cheek fluff (left and right)
+            ctx.fillStyle = shadeColor(skin.bodyColor, 15);
+            ctx.beginPath();
+            ctx.ellipse(-11, -12 + bounce, 6, 5, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(11, -12 + bounce, 6, 5, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fur texture on head
+            addFurTexture(0, -17 + bounce, 24, 18, shadeColor(skin.bodyColor, -20), 8);
+
+            // Forehead marking (M shape for tabbies)
+            if (!skin.patches) {
+                ctx.strokeStyle = skin.stripeColor;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-6, -26 + bounce);
+                ctx.lineTo(-3, -23 + bounce);
+                ctx.lineTo(0, -26 + bounce);
+                ctx.lineTo(3, -23 + bounce);
+                ctx.lineTo(6, -26 + bounce);
+                ctx.stroke();
+            }
+
+            // === EARS ===
+            // Left ear (with realistic shape)
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.moveTo(-13, -26 + bounce);
+            ctx.quadraticCurveTo(-16, -32 + bounce, -10, -40 + bounce);
+            ctx.quadraticCurveTo(-6, -35 + bounce, -5, -27 + bounce);
+            ctx.closePath();
+            ctx.fill();
+            // Left ear inner
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.moveTo(-11, -27 + bounce);
+            ctx.quadraticCurveTo(-13, -32 + bounce, -10, -36 + bounce);
+            ctx.quadraticCurveTo(-8, -32 + bounce, -7, -28 + bounce);
+            ctx.closePath();
+            ctx.fill();
+            // Ear fur tufts
+            ctx.strokeStyle = shadeColor(skin.bodyColor, 30);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-9, -36 + bounce);
+            ctx.lineTo(-9, -39 + bounce);
+            ctx.moveTo(-11, -35 + bounce);
+            ctx.lineTo(-12, -38 + bounce);
+            ctx.stroke();
+
+            // Right ear
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.moveTo(5, -27 + bounce);
+            ctx.quadraticCurveTo(6, -35 + bounce, 10, -40 + bounce);
+            ctx.quadraticCurveTo(16, -32 + bounce, 13, -26 + bounce);
+            ctx.closePath();
+            ctx.fill();
+            // Right ear inner
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.moveTo(7, -28 + bounce);
+            ctx.quadraticCurveTo(8, -32 + bounce, 10, -36 + bounce);
+            ctx.quadraticCurveTo(13, -32 + bounce, 11, -27 + bounce);
+            ctx.closePath();
+            ctx.fill();
+            // Ear fur tufts
+            ctx.strokeStyle = shadeColor(skin.bodyColor, 30);
+            ctx.beginPath();
+            ctx.moveTo(9, -36 + bounce);
+            ctx.lineTo(9, -39 + bounce);
+            ctx.moveTo(11, -35 + bounce);
+            ctx.lineTo(12, -38 + bounce);
+            ctx.stroke();
+
+            // === EYES (realistic cat eyes with vertical pupils) ===
+            // Eye sockets (slight shadow)
+            ctx.fillStyle = shadeColor(skin.bodyColor, -20);
+            ctx.beginPath();
+            ctx.ellipse(-6, -18 + bounce, 6, 5.5, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, -18 + bounce, 6, 5.5, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye whites (slightly visible)
+            ctx.fillStyle = '#FAFAFA';
+            ctx.beginPath();
+            ctx.ellipse(-6, -18 + bounce, 5.5, 5, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, -18 + bounce, 5.5, 5, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Iris (large, cat-like)
+            ctx.fillStyle = skin.eyeColor;
+            ctx.beginPath();
+            ctx.ellipse(-6, -18 + bounce, 4.5, 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, -18 + bounce, 4.5, 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Iris gradient/depth
+            const irisGradient = ctx.createRadialGradient(-6, -18 + bounce, 0, -6, -18 + bounce, 4.5);
+            irisGradient.addColorStop(0, shadeColor(skin.eyeColor, 30));
+            irisGradient.addColorStop(0.7, skin.eyeColor);
+            irisGradient.addColorStop(1, shadeColor(skin.eyeColor, -30));
+            ctx.fillStyle = irisGradient;
+            ctx.beginPath();
+            ctx.ellipse(-6, -18 + bounce, 4.5, 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            const irisGradient2 = ctx.createRadialGradient(6, -18 + bounce, 0, 6, -18 + bounce, 4.5);
+            irisGradient2.addColorStop(0, shadeColor(skin.eyeColor, 30));
+            irisGradient2.addColorStop(0.7, skin.eyeColor);
+            irisGradient2.addColorStop(1, shadeColor(skin.eyeColor, -30));
+            ctx.fillStyle = irisGradient2;
+            ctx.beginPath();
+            ctx.ellipse(6, -18 + bounce, 4.5, 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils (vertical slits - realistic cat pupils)
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.ellipse(-6, -18 + bounce, 1.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(6, -18 + bounce, 1.5, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye shine (multiple reflections for realism)
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.beginPath();
+            ctx.ellipse(-7.5, -20 + bounce, 1.8, 1.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(4.5, -20 + bounce, 1.8, 1.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Secondary smaller shine
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.beginPath();
+            ctx.arc(-4, -16 + bounce, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(8, -16 + bounce, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye liner (subtle)
+            ctx.strokeStyle = shadeColor(skin.bodyColor, -40);
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.ellipse(-6, -18 + bounce, 5.5, 5, 0.1, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(6, -18 + bounce, 5.5, 5, -0.1, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // === NOSE (realistic cat nose shape) ===
+            // Nose bridge
+            ctx.fillStyle = shadeColor(skin.bodyColor, -10);
+            ctx.beginPath();
+            ctx.moveTo(-2, -13 + bounce);
+            ctx.quadraticCurveTo(0, -11 + bounce, 2, -13 + bounce);
+            ctx.lineTo(1, -9 + bounce);
+            ctx.lineTo(-1, -9 + bounce);
+            ctx.closePath();
+            ctx.fill();
+
+            // Main nose (upside-down triangle with rounded bottom)
+            ctx.fillStyle = skin.noseColor;
+            ctx.beginPath();
+            ctx.moveTo(0, -10 + bounce);
+            ctx.bezierCurveTo(-4, -8 + bounce, -4, -5 + bounce, -2, -5 + bounce);
+            ctx.lineTo(2, -5 + bounce);
+            ctx.bezierCurveTo(4, -5 + bounce, 4, -8 + bounce, 0, -10 + bounce);
+            ctx.fill();
+            // Nose highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(-1, -8 + bounce, 1.5, 1, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // Nostrils
+            ctx.fillStyle = shadeColor(skin.noseColor, -30);
+            ctx.beginPath();
+            ctx.ellipse(-1.5, -6 + bounce, 0.8, 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(1.5, -6 + bounce, 0.8, 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === MUZZLE AND MOUTH ===
+            // Muzzle (whisker pad area - puffy)
+            ctx.fillStyle = shadeColor(skin.bodyColor, 25);
+            ctx.beginPath();
+            ctx.ellipse(-4, -3 + bounce, 5, 4, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(4, -3 + bounce, 5, 4, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Philtrum (line from nose to mouth)
+            ctx.strokeStyle = shadeColor(skin.bodyColor, -20);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(0, -5 + bounce);
+            ctx.lineTo(0, -2 + bounce);
+            ctx.stroke();
+
+            // Mouth
+            ctx.strokeStyle = shadeColor(skin.bodyColor, -35);
+            ctx.lineWidth = 1.3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(-3, -1 + bounce, 3, -0.2, Math.PI * 0.7, false);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(3, -1 + bounce, 3, Math.PI * 0.3, Math.PI + 0.2, false);
+            ctx.stroke();
+
+            // Chin
+            ctx.fillStyle = shadeColor(skin.bodyColor, 20);
+            ctx.beginPath();
+            ctx.ellipse(0, 3 + bounce, 4, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === WHISKERS (more realistic, curved) ===
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 0.8;
+            ctx.lineCap = 'round';
+            // Left whiskers
+            for (let i = 0; i < 3; i++) {
+                const startY = -4 + i * 2.5 + bounce;
+                const curve = (i - 1) * 3;
+                ctx.beginPath();
+                ctx.moveTo(-8, startY);
+                ctx.quadraticCurveTo(-18, startY + curve - 2, -26, startY + curve);
+                ctx.stroke();
+            }
+            // Right whiskers
+            for (let i = 0; i < 3; i++) {
+                const startY = -4 + i * 2.5 + bounce;
+                const curve = (i - 1) * 3;
+                ctx.beginPath();
+                ctx.moveTo(8, startY);
+                ctx.quadraticCurveTo(18, startY + curve - 2, 26, startY + curve);
+                ctx.stroke();
+            }
+            // Whisker dots (follicles)
+            ctx.fillStyle = shadeColor(skin.bodyColor, -15);
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(-7, -4 + i * 2.5 + bounce, 0.6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(7, -4 + i * 2.5 + bounce, 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // === HOLIDAY ACCESSORIES ===
             if (skin.hat === 'santa') {
-                // Santa hat
                 ctx.fillStyle = '#C0392B';
                 ctx.beginPath();
                 ctx.moveTo(-15, -30 + bounce);
-                ctx.lineTo(0, -55 + bounce);
-                ctx.lineTo(15, -30 + bounce);
+                ctx.quadraticCurveTo(-5, -50 + bounce, 5, -55 + bounce);
+                ctx.quadraticCurveTo(10, -45 + bounce, 15, -30 + bounce);
+                ctx.closePath();
                 ctx.fill();
+                // White trim
                 ctx.fillStyle = 'white';
-                ctx.fillRect(-17, -32 + bounce, 34, 8);
                 ctx.beginPath();
-                ctx.arc(0, -55 + bounce, 6, 0, Math.PI * 2);
+                ctx.ellipse(0, -30 + bounce, 18, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Pompom
+                ctx.beginPath();
+                ctx.arc(5, -55 + bounce, 6, 0, Math.PI * 2);
                 ctx.fill();
             } else if (skin.hat === 'elf') {
-                // Elf hat
                 ctx.fillStyle = '#27AE60';
                 ctx.beginPath();
                 ctx.moveTo(-12, -30 + bounce);
-                ctx.lineTo(5, -55 + bounce);
-                ctx.lineTo(12, -30 + bounce);
+                ctx.quadraticCurveTo(0, -45 + bounce, 8, -55 + bounce);
+                ctx.quadraticCurveTo(10, -40 + bounce, 12, -30 + bounce);
+                ctx.closePath();
                 ctx.fill();
                 ctx.fillStyle = '#E74C3C';
-                ctx.fillRect(-14, -32 + bounce, 28, 6);
+                ctx.beginPath();
+                ctx.ellipse(0, -30 + bounce, 15, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = '#F1C40F';
                 ctx.beginPath();
-                ctx.arc(5, -55 + bounce, 5, 0, Math.PI * 2);
+                ctx.arc(8, -55 + bounce, 5, 0, Math.PI * 2);
                 ctx.fill();
             } else if (skin.hat === 'pilgrim') {
-                // Pilgrim hat
                 ctx.fillStyle = '#2C3E50';
-                ctx.fillRect(-15, -45 + bounce, 30, 20);
-                ctx.fillRect(-20, -28 + bounce, 40, 6);
+                ctx.fillRect(-13, -48 + bounce, 26, 22);
+                ctx.beginPath();
+                ctx.ellipse(0, -27 + bounce, 20, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = '#F39C12';
-                ctx.fillRect(-4, -40 + bounce, 8, 12);
+                ctx.fillRect(-3, -42 + bounce, 6, 10);
             }
 
             if (skin.accessory === 'scarf') {
-                // Scarf
+                // Knitted scarf texture
                 ctx.fillStyle = '#E74C3C';
-                ctx.fillRect(-12, -5 + bounce, 24, 8);
+                ctx.beginPath();
+                ctx.ellipse(0, -2 + bounce, 14, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = '#27AE60';
-                ctx.fillRect(-12, -5 + bounce, 6, 8);
-                ctx.fillRect(6, -5 + bounce, 6, 8);
-                // Scarf end
+                ctx.beginPath();
+                ctx.ellipse(-10, -2 + bounce, 4, 5, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(10, -2 + bounce, 4, 5, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+                // Scarf tail
                 ctx.fillStyle = '#E74C3C';
-                ctx.fillRect(12, -5 + bounce, 8, 18);
+                ctx.beginPath();
+                ctx.moveTo(12, -2 + bounce);
+                ctx.quadraticCurveTo(18, 5 + bounce, 16, 18 + bounce);
+                ctx.lineTo(20, 18 + bounce);
+                ctx.quadraticCurveTo(24, 5 + bounce, 14, -2 + bounce);
+                ctx.closePath();
+                ctx.fill();
+                // Fringe
+                ctx.strokeStyle = '#E74C3C';
+                ctx.lineWidth = 1.5;
+                for (let f = 0; f < 3; f++) {
+                    ctx.beginPath();
+                    ctx.moveTo(16 + f * 1.5, 18 + bounce);
+                    ctx.lineTo(15 + f * 2, 24 + bounce);
+                    ctx.stroke();
+                }
             } else if (skin.accessory === 'leaves') {
-                // Fall leaves on head
-                const leafColors = ['#E74C3C', '#F39C12', '#D35400'];
-                for (let i = 0; i < 3; i++) {
+                const leafColors = ['#E74C3C', '#F39C12', '#D35400', '#C0392B'];
+                for (let i = 0; i < 4; i++) {
                     ctx.fillStyle = leafColors[i];
                     ctx.beginPath();
-                    ctx.ellipse(-8 + i * 8, -32 + bounce, 5, 3, Math.PI / 4 + i * 0.3, 0, Math.PI * 2);
+                    const lx = -10 + i * 7;
+                    const ly = -34 + bounce + Math.sin(i) * 2;
+                    ctx.ellipse(lx, ly, 5, 3, Math.PI / 4 + i * 0.4, 0, Math.PI * 2);
                     ctx.fill();
+                    // Leaf vein
+                    ctx.strokeStyle = shadeColor(leafColors[i], -20);
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(lx - 3, ly + 2);
+                    ctx.lineTo(lx + 3, ly - 2);
+                    ctx.stroke();
                 }
             }
 
