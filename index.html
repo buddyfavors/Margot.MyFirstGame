@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐱 Cute Cat Obby Adventure 🐱</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard', cursive;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            background: #87CEEB;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            display: block;
+            border-radius: 20px;
+        }
+
+        /* Menu Overlay */
+        #menuOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #FFE5EC 0%, #FFC8DD 50%, #FFAFCC 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            z-index: 10;
+            border-radius: 20px;
+        }
+
+        #menuOverlay.hidden {
+            display: none;
+        }
+
+        .game-title {
+            font-size: 42px;
+            color: #FF6B9D;
+            text-shadow: 3px 3px 0px #fff, 5px 5px 0px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #A855F7;
+            margin-bottom: 20px;
+        }
+
+        .skin-selector {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+            max-width: 600px;
+        }
+
+        .skin-option {
+            width: 100px;
+            height: 120px;
+            background: white;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 4px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .skin-option:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .skin-option.selected {
+            border-color: #FF6B9D;
+            background: #FFF0F5;
+        }
+
+        .skin-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 8px;
+        }
+
+        .skin-name {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+        }
+
+        .play-button {
+            margin-top: 20px;
+            padding: 15px 60px;
+            font-size: 24px;
+            background: linear-gradient(180deg, #FF6B9D 0%, #FF4777 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 6px 0 #CC3366, 0 8px 20px rgba(0,0,0,0.2);
+            font-family: inherit;
+        }
+
+        .play-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 9px 0 #CC3366, 0 12px 25px rgba(0,0,0,0.25);
+        }
+
+        .play-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 #CC3366, 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hud-panel {
+            background: rgba(255,255,255,0.9);
+            padding: 10px 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .treats-counter {
+            font-size: 20px;
+            color: #FF6B9D;
+        }
+
+        .energy-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .energy-bar {
+            width: 100px;
+            height: 15px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #A855F7, #6366F1);
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+
+        .ability-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Win/Lose Overlay */
+        #resultOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            border-radius: 20px;
+        }
+
+        #resultOverlay.hidden {
+            display: none;
+        }
+
+        .result-text {
+            font-size: 48px;
+            color: white;
+            text-shadow: 3px 3px 0px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .result-subtext {
+            font-size: 24px;
+            color: #FFD700;
+            margin-bottom: 30px;
+        }
+
+        .instructions {
+            background: rgba(255,255,255,0.9);
+            padding: 15px 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .instructions h3 {
+            color: #FF6B9D;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .controls-hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Menu Overlay -->
+        <div id="menuOverlay">
+            <h1 class="game-title">🐱 Cat Obby Adventure 🐱</h1>
+            <p class="subtitle">Choose your adorable cat!</p>
+            
+            <div class="skin-selector" id="skinSelector">
+                <!-- Skins will be added by JavaScript -->
+            </div>
+            
+            <div class="instructions">
+                <h3>🎮 How to Play</h3>
+                <p>
+                    🏃 Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>
+                    🦘 Press <strong>Space</strong> or <strong>W/Up</strong> to jump<br>
+                    🧲 Press <strong>E</strong> to activate Magnet ability<br>
+                    🐟 Collect <strong>30 treats</strong> to complete the level!<br>
+                    🐦 Watch out for pesky birds!
+                </p>
+            </div>
+            
+            <button class="play-button" id="playButton">🎮 Play!</button>
+        </div>
+
+        <!-- HUD -->
+        <div id="hud" style="display: none;">
+            <div class="hud-panel">
+                <div class="treats-counter">🐟 <span id="treatsCount">0</span> / 30</div>
+            </div>
+            <div class="hud-panel">
+                <div class="energy-bar-container">
+                    <span>⚡</span>
+                    <div class="energy-bar">
+                        <div class="energy-fill" id="energyFill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="ability-hint">Press E for 🧲 Magnet</div>
+            </div>
+        </div>
+
+        <!-- Result Overlay -->
+        <div id="resultOverlay" class="hidden">
+            <div class="result-text" id="resultText">🎉 You Win! 🎉</div>
+            <div class="result-subtext" id="resultSubtext">Amazing job, kitty!</div>
+            <button class="play-button" id="restartButton">🔄 Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 🐱 CUTE CAT OBBY GAME 🐱
+        // ============================================
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Cat Skins Definition
+        const CAT_SKINS = [
+            {
+                id: 'orange',
+                name: 'Orange Tabby',
+                bodyColor: '#FF9F43',
+                stripeColor: '#E67E22',
+                earInner: '#FFB8B8',
+                noseColor: '#FF6B9D',
+                eyeColor: '#2ECC71'
+            },
+            {
+                id: 'gray',
+                name: 'Gray Kitty',
+                bodyColor: '#95A5A6',
+                stripeColor: '#7F8C8D',
+                earInner: '#FFB8B8',
+                noseColor: '#FF6B9D',
+                eyeColor: '#3498DB'
+            },
+            {
+                id: 'black',
+                name: 'Black Cat',
+                bodyColor: '#2C3E50',
+                stripeColor: '#1A252F',
+                earInner: '#FFB8B8',
+                noseColor: '#FF6B9D',
+                eyeColor: '#F1C40F'
+            },
+            {
+                id: 'white',
+                name: 'White Fluffy',
+                bodyColor: '#FDFEFE',
+                stripeColor: '#ECF0F1',
+                earInner: '#FFB8B8',
+                noseColor: '#FF6B9D',
+                eyeColor: '#9B59B6'
+            },
+            {
+                id: 'calico',
+                name: 'Calico Cat',
+                bodyColor: '#FDEBD0',
+                stripeColor: '#E67E22',
+                patches: ['#2C3E50', '#E67E22'],
+                earInner: '#FFB8B8',
+                noseColor: '#FF6B9D',
+                eyeColor: '#27AE60'
+            },
+            {
+                id: 'thanksgiving',
+                name: '🦃 Turkey Cat',
+                bodyColor: '#D35400',
+                stripeColor: '#A04000',
+                earInner: '#F39C12',
+                noseColor: '#C0392B',
+                eyeColor: '#F39C12',
+                hat: 'pilgrim',
+                isHoliday: true
+            },
+            {
+                id: 'thanksgiving2',
+                name: '🍂 Autumn Cat',
+                bodyColor: '#E67E22',
+                stripeColor: '#D35400',
+                earInner: '#F39C12',
+                noseColor: '#C0392B',
+                eyeColor: '#8B4513',
+                accessory: 'leaves',
+                isHoliday: true
+            },
+            {
+                id: 'christmas',
+                name: '🎄 Santa Cat',
+                bodyColor: '#E74C3C',
+                stripeColor: '#C0392B',
+                earInner: '#27AE60',
+                noseColor: '#C0392B',
+                eyeColor: '#27AE60',
+                hat: 'santa',
+                isHoliday: true
+            },
+            {
+                id: 'christmas2',
+                name: '🎁 Elf Cat',
+                bodyColor: '#27AE60',
+                stripeColor: '#1E8449',
+                earInner: '#E74C3C',
+                noseColor: '#E74C3C',
+                eyeColor: '#E74C3C',
+                hat: 'elf',
+                isHoliday: true
+            },
+            {
+                id: 'christmas3',
+                name: '❄️ Snow Cat',
+                bodyColor: '#ECF0F1',
+                stripeColor: '#BDC3C7',
+                earInner: '#3498DB',
+                noseColor: '#E74C3C',
+                eyeColor: '#3498DB',
+                accessory: 'scarf',
+                isHoliday: true
+            }
+        ];
+
+        // Game State
+        let gameState = 'menu'; // menu, playing, won, lost
+        let selectedSkin = CAT_SKINS[0];
+        let treatsCollected = 0;
+        let energy = 0;
+        let magnetActive = false;
+        let magnetTimer = 0;
+        const MAGNET_DURATION = 3000;
+        const MAGNET_COST = 30;
+        const MAGNET_RANGE = 150;
+
+        // Camera
+        let camera = { x: 0, y: 0 };
+
+        // Cat Player
+        const cat = {
+            x: 100,
+            y: 400,
+            width: 40,
+            height: 35,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            jumpPower: -14,
+            gravity: 0.6,
+            onGround: false,
+            facingRight: true,
+            animFrame: 0,
+            animTimer: 0
+        };
+
+        // Platforms
+        let platforms = [];
+
+        // Treats
+        let treats = [];
+
+        // Birds
+        let birds = [];
+
+        // Particles
+        let particles = [];
+
+        // Input
+        const keys = {};
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        function initSkinSelector() {
+            const selector = document.getElementById('skinSelector');
+            selector.innerHTML = '';
+
+            CAT_SKINS.forEach((skin, index) => {
+                const option = document.createElement('div');
+                option.className = 'skin-option' + (index === 0 ? ' selected' : '');
+                option.innerHTML = `
+                    <canvas class="skin-preview" width="60" height="60" id="skinPreview${index}"></canvas>
+                    <span class="skin-name">${skin.name}</span>
+                `;
+                option.addEventListener('click', () => selectSkin(skin, option));
+                selector.appendChild(option);
+
+                // Draw cat preview
+                setTimeout(() => drawCatPreview(index, skin), 0);
+            });
+        }
+
+        function drawCatPreview(index, skin) {
+            const previewCanvas = document.getElementById(`skinPreview${index}`);
+            if (!previewCanvas) return;
+            const pctx = previewCanvas.getContext('2d');
+            pctx.clearRect(0, 0, 60, 60);
+            drawCatSprite(pctx, 30, 35, skin, true, 0, 1.2);
+        }
+
+        function selectSkin(skin, element) {
+            selectedSkin = skin;
+            document.querySelectorAll('.skin-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        function generateLevel() {
+            platforms = [];
+            treats = [];
+            birds = [];
+
+            // Ground platform
+            platforms.push({
+                x: -100,
+                y: 550,
+                width: 400,
+                height: 60,
+                type: 'ground'
+            });
+
+            // Generate random obby platforms going upward and rightward
+            let lastX = 100;
+            let lastY = 450;
+            const numPlatforms = 50;
+
+            for (let i = 0; i < numPlatforms; i++) {
+                const jumpDist = 80 + Math.random() * 100;
+                const heightChange = -30 - Math.random() * 80;
+                const direction = Math.random() < 0.7 ? 1 : -0.3; // Mostly go right
+
+                lastX += jumpDist * direction;
+                lastY += heightChange;
+
+                // Keep platforms in reasonable bounds
+                if (lastX < 50) lastX = 50;
+                if (lastY < 100) lastY = 100 + Math.random() * 100;
+                if (lastY > 500) lastY = 400;
+
+                const platWidth = 60 + Math.random() * 80;
+                const platType = Math.random() < 0.2 ? 'moving' : 'static';
+
+                platforms.push({
+                    x: lastX,
+                    y: lastY,
+                    width: platWidth,
+                    height: 20,
+                    type: platType,
+                    originalX: lastX,
+                    originalY: lastY,
+                    moveTimer: Math.random() * Math.PI * 2,
+                    moveSpeed: 0.02 + Math.random() * 0.02,
+                    moveRange: 30 + Math.random() * 40
+                });
+
+                // Add treats on or near platforms
+                if (Math.random() < 0.7) {
+                    const numTreats = 1 + Math.floor(Math.random() * 3);
+                    for (let t = 0; t < numTreats; t++) {
+                        treats.push({
+                            x: lastX + Math.random() * platWidth,
+                            y: lastY - 30 - Math.random() * 50,
+                            collected: false,
+                            bobTimer: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+            }
+
+            // Add final platform with goal
+            platforms.push({
+                x: lastX + 150,
+                y: lastY - 50,
+                width: 150,
+                height: 25,
+                type: 'goal'
+            });
+
+            // Generate birds
+            for (let i = 0; i < 8; i++) {
+                birds.push({
+                    x: 200 + Math.random() * (lastX + 200),
+                    y: 100 + Math.random() * 300,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 2,
+                    width: 35,
+                    height: 25,
+                    animTimer: Math.random() * Math.PI * 2,
+                    changeTimer: 0
+                });
+            }
+        }
+
+        function resetGame() {
+            cat.x = 100;
+            cat.y = 400;
+            cat.vx = 0;
+            cat.vy = 0;
+            cat.onGround = false;
+            treatsCollected = 0;
+            energy = 0;
+            magnetActive = false;
+            magnetTimer = 0;
+            particles = [];
+            generateLevel();
+            updateHUD();
+        }
+
+        function startGame() {
+            document.getElementById('menuOverlay').classList.add('hidden');
+            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('resultOverlay').classList.add('hidden');
+            gameState = 'playing';
+            resetGame();
+        }
+
+        // ============================================
+        // DRAWING FUNCTIONS
+        // ============================================
+
+        function drawCatSprite(ctx, x, y, skin, facingRight, animFrame, scale = 1) {
+            ctx.save();
+            ctx.translate(x, y);
+            if (!facingRight) ctx.scale(-1, 1);
+            ctx.scale(scale, scale);
+
+            const bounce = Math.sin(animFrame * 0.3) * 2;
+
+            // Body
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(0, bounce, 18, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Stripes
+            ctx.strokeStyle = skin.stripeColor;
+            ctx.lineWidth = 2;
+            for (let i = -1; i <= 1; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 8 - 3, -8 + bounce);
+                ctx.lineTo(i * 8 + 3, 8 + bounce);
+                ctx.stroke();
+            }
+
+            // Patches for calico
+            if (skin.patches) {
+                ctx.fillStyle = skin.patches[0];
+                ctx.beginPath();
+                ctx.arc(-8, -5 + bounce, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = skin.patches[1];
+                ctx.beginPath();
+                ctx.arc(8, 5 + bounce, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Head
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.arc(0, -18 + bounce, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears
+            ctx.fillStyle = skin.bodyColor;
+            ctx.beginPath();
+            ctx.moveTo(-12, -28 + bounce);
+            ctx.lineTo(-8, -38 + bounce);
+            ctx.lineTo(-4, -28 + bounce);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(4, -28 + bounce);
+            ctx.lineTo(8, -38 + bounce);
+            ctx.lineTo(12, -28 + bounce);
+            ctx.fill();
+
+            // Inner ears
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.moveTo(-10, -28 + bounce);
+            ctx.lineTo(-8, -34 + bounce);
+            ctx.lineTo(-6, -28 + bounce);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(6, -28 + bounce);
+            ctx.lineTo(8, -34 + bounce);
+            ctx.lineTo(10, -28 + bounce);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.ellipse(-5, -20 + bounce, 5, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(5, -20 + bounce, 5, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils
+            ctx.fillStyle = skin.eyeColor;
+            ctx.beginPath();
+            ctx.ellipse(-5, -19 + bounce, 3, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(5, -19 + bounce, 3, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye shine
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-6, -21 + bounce, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(4, -21 + bounce, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = skin.noseColor;
+            ctx.beginPath();
+            ctx.moveTo(0, -14 + bounce);
+            ctx.lineTo(-3, -11 + bounce);
+            ctx.lineTo(3, -11 + bounce);
+            ctx.fill();
+
+            // Mouth
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, -11 + bounce);
+            ctx.lineTo(0, -8 + bounce);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(-3, -7 + bounce, 3, -0.3, Math.PI + 0.3, true);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(3, -7 + bounce, 3, -Math.PI - 0.3, 0.3, false);
+            ctx.stroke();
+
+            // Whiskers
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 1;
+            for (let side = -1; side <= 1; side += 2) {
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(side * 8, -12 + i * 3 + bounce);
+                    ctx.lineTo(side * 20, -14 + i * 4 + bounce);
+                    ctx.stroke();
+                }
+            }
+
+            // Tail
+            ctx.strokeStyle = skin.bodyColor;
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-15, 5 + bounce);
+            const tailWave = Math.sin(animFrame * 0.2) * 8;
+            ctx.quadraticCurveTo(-25, -5 + tailWave + bounce, -30, -15 + tailWave + bounce);
+            ctx.stroke();
+            ctx.strokeStyle = skin.stripeColor;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Legs
+            ctx.fillStyle = skin.bodyColor;
+            const legAnim = Math.sin(animFrame * 0.4) * 3;
+            // Front legs
+            ctx.fillRect(8, 8 + bounce, 6, 12 + legAnim);
+            ctx.fillRect(-2, 8 + bounce, 6, 12 - legAnim);
+            // Paws
+            ctx.fillStyle = skin.earInner;
+            ctx.beginPath();
+            ctx.ellipse(11, 20 + bounce + legAnim, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(1, 20 + bounce - legAnim, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Holiday accessories
+            if (skin.hat === 'santa') {
+                // Santa hat
+                ctx.fillStyle = '#C0392B';
+                ctx.beginPath();
+                ctx.moveTo(-15, -30 + bounce);
+                ctx.lineTo(0, -55 + bounce);
+                ctx.lineTo(15, -30 + bounce);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.fillRect(-17, -32 + bounce, 34, 8);
+                ctx.beginPath();
+                ctx.arc(0, -55 + bounce, 6, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (skin.hat === 'elf') {
+                // Elf hat
+                ctx.fillStyle = '#27AE60';
+                ctx.beginPath();
+                ctx.moveTo(-12, -30 + bounce);
+                ctx.lineTo(5, -55 + bounce);
+                ctx.lineTo(12, -30 + bounce);
+                ctx.fill();
+                ctx.fillStyle = '#E74C3C';
+                ctx.fillRect(-14, -32 + bounce, 28, 6);
+                ctx.fillStyle = '#F1C40F';
+                ctx.beginPath();
+                ctx.arc(5, -55 + bounce, 5, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (skin.hat === 'pilgrim') {
+                // Pilgrim hat
+                ctx.fillStyle = '#2C3E50';
+                ctx.fillRect(-15, -45 + bounce, 30, 20);
+                ctx.fillRect(-20, -28 + bounce, 40, 6);
+                ctx.fillStyle = '#F39C12';
+                ctx.fillRect(-4, -40 + bounce, 8, 12);
+            }
+
+            if (skin.accessory === 'scarf') {
+                // Scarf
+                ctx.fillStyle = '#E74C3C';
+                ctx.fillRect(-12, -5 + bounce, 24, 8);
+                ctx.fillStyle = '#27AE60';
+                ctx.fillRect(-12, -5 + bounce, 6, 8);
+                ctx.fillRect(6, -5 + bounce, 6, 8);
+                // Scarf end
+                ctx.fillStyle = '#E74C3C';
+                ctx.fillRect(12, -5 + bounce, 8, 18);
+            } else if (skin.accessory === 'leaves') {
+                // Fall leaves on head
+                const leafColors = ['#E74C3C', '#F39C12', '#D35400'];
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillStyle = leafColors[i];
+                    ctx.beginPath();
+                    ctx.ellipse(-8 + i * 8, -32 + bounce, 5, 3, Math.PI / 4 + i * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function drawTreat(x, y, bobOffset) {
+            ctx.save();
+            ctx.translate(x, y + Math.sin(bobOffset) * 5);
+
+            // Fish treat
+            ctx.fillStyle = '#FF9F43';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(-18, -6);
+            ctx.lineTo(-18, 6);
+            ctx.closePath();
+            ctx.fill();
+
+            // Eye
+            ctx.fillStyle = '#2C3E50';
+            ctx.beginPath();
+            ctx.arc(6, -1, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Sparkle
+            ctx.fillStyle = 'white';
+            ctx.globalAlpha = 0.7 + Math.sin(bobOffset * 2) * 0.3;
+            ctx.beginPath();
+            ctx.arc(3, -4, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawBird(bird) {
+            ctx.save();
+            ctx.translate(bird.x, bird.y);
+            if (bird.vx < 0) ctx.scale(-1, 1);
+
+            const flapOffset = Math.sin(bird.animTimer * 8) * 10;
+
+            // Body
+            ctx.fillStyle = '#5D6D7E';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = '#34495E';
+            ctx.beginPath();
+            ctx.arc(12, -3, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak
+            ctx.fillStyle = '#F39C12';
+            ctx.beginPath();
+            ctx.moveTo(18, -3);
+            ctx.lineTo(26, -1);
+            ctx.lineTo(18, 1);
+            ctx.closePath();
+            ctx.fill();
+
+            // Eye
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(14, -4, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2C3E50';
+            ctx.beginPath();
+            ctx.arc(15, -4, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Angry eyebrow
+            ctx.strokeStyle = '#2C3E50';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(10, -8);
+            ctx.lineTo(18, -6);
+            ctx.stroke();
+
+            // Wings
+            ctx.fillStyle = '#7F8C8D';
+            ctx.beginPath();
+            ctx.ellipse(-5, -5 + flapOffset, 12, 6, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail
+            ctx.fillStyle = '#5D6D7E';
+            ctx.beginPath();
+            ctx.moveTo(-12, 0);
+            ctx.lineTo(-25, -5);
+            ctx.lineTo(-25, 5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawPlatform(plat) {
+            ctx.save();
+
+            if (plat.type === 'ground') {
+                // Ground - grass
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height);
+                ctx.fillStyle = '#27AE60';
+                ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, 15);
+
+                // Grass blades
+                ctx.strokeStyle = '#2ECC71';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < plat.width; i += 10) {
+                    ctx.beginPath();
+                    ctx.moveTo(plat.x - camera.x + i, plat.y - camera.y);
+                    ctx.lineTo(plat.x - camera.x + i + 3, plat.y - camera.y - 8);
+                    ctx.stroke();
+                }
+            } else if (plat.type === 'goal') {
+                // Goal platform - rainbow/special
+                const gradient = ctx.createLinearGradient(
+                    plat.x - camera.x, 0,
+                    plat.x - camera.x + plat.width, 0
+                );
+                gradient.addColorStop(0, '#FF6B9D');
+                gradient.addColorStop(0.5, '#A855F7');
+                gradient.addColorStop(1, '#6366F1');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height);
+
+                // Stars
+                ctx.fillStyle = '#FFD700';
+                for (let i = 0; i < 3; i++) {
+                    const starX = plat.x - camera.x + 30 + i * 40;
+                    const starY = plat.y - camera.y - 20 + Math.sin(Date.now() / 300 + i) * 5;
+                    drawStar(starX, starY, 8);
+                }
+            } else {
+                // Regular/moving platform
+                const isMoving = plat.type === 'moving';
+                ctx.fillStyle = isMoving ? '#A855F7' : '#FF6B9D';
+
+                // Platform shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(plat.x - camera.x + 3, plat.y - camera.y + 3, plat.width, plat.height);
+
+                // Platform body
+                ctx.fillStyle = isMoving ? '#A855F7' : '#FF6B9D';
+                ctx.beginPath();
+                ctx.roundRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height, 8);
+                ctx.fill();
+
+                // Highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(plat.x - camera.x + 5, plat.y - camera.y + 2, plat.width - 10, 5);
+
+                // Moving indicator
+                if (isMoving) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(plat.x - camera.x + plat.width / 2, plat.y - camera.y + plat.height / 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        function drawStar(x, y, size) {
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                const px = x + Math.cos(angle) * size;
+                const py = y + Math.sin(angle) * size;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawParticles() {
+            particles.forEach((p, i) => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x - camera.x, p.y - camera.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function drawMagnetEffect() {
+            if (!magnetActive) return;
+
+            ctx.save();
+            ctx.globalAlpha = 0.2 + Math.sin(Date.now() / 100) * 0.1;
+            ctx.strokeStyle = '#A855F7';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.arc(cat.x + cat.width / 2 - camera.x, cat.y + cat.height / 2 - camera.y, MAGNET_RANGE, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            // Magnet icon above cat
+            ctx.fillStyle = '#A855F7';
+            ctx.font = '20px Arial';
+            ctx.fillText('🧲', cat.x + cat.width / 2 - camera.x - 10, cat.y - camera.y - 30);
+        }
+
+        function drawBackground() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#B0E0E6');
+            gradient.addColorStop(1, '#98D8C8');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            const cloudOffset = (Date.now() / 50) % (canvas.width + 200);
+            for (let i = 0; i < 5; i++) {
+                const cloudX = (i * 200 + cloudOffset) % (canvas.width + 200) - 100;
+                const cloudY = 50 + i * 40;
+                drawCloud(cloudX, cloudY);
+            }
+
+            // Distant mountains
+            ctx.fillStyle = '#98D8C8';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            for (let x = 0; x < canvas.width; x += 100) {
+                ctx.lineTo(x, canvas.height - 100 - Math.sin(x / 200) * 50);
+            }
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.fill();
+        }
+
+        function drawCloud(x, y) {
+            ctx.beginPath();
+            ctx.arc(x, y, 25, 0, Math.PI * 2);
+            ctx.arc(x + 25, y - 10, 30, 0, Math.PI * 2);
+            ctx.arc(x + 50, y, 25, 0, Math.PI * 2);
+            ctx.arc(x + 25, y + 10, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ============================================
+        // GAME LOGIC
+        // ============================================
+
+        function updateCat() {
+            // Horizontal movement
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                cat.vx = -cat.speed;
+                cat.facingRight = false;
+            } else if (keys['ArrowRight'] || keys['KeyD']) {
+                cat.vx = cat.speed;
+                cat.facingRight = true;
+            } else {
+                cat.vx *= 0.8;
+            }
+
+            // Jump
+            if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space']) && cat.onGround) {
+                cat.vy = cat.jumpPower;
+                cat.onGround = false;
+                spawnParticles(cat.x + cat.width / 2, cat.y + cat.height, '#FFB8B8', 5);
+            }
+
+            // Apply gravity
+            cat.vy += cat.gravity;
+
+            // Apply velocity
+            cat.x += cat.vx;
+            cat.y += cat.vy;
+
+            // Animation
+            if (Math.abs(cat.vx) > 0.5) {
+                cat.animTimer++;
+                cat.animFrame = cat.animTimer;
+            }
+
+            // Platform collision
+            cat.onGround = false;
+            platforms.forEach(plat => {
+                if (cat.x + cat.width > plat.x && cat.x < plat.x + plat.width) {
+                    if (cat.y + cat.height > plat.y && cat.y + cat.height < plat.y + plat.height + cat.vy + 10) {
+                        if (cat.vy >= 0) {
+                            cat.y = plat.y - cat.height;
+                            cat.vy = 0;
+                            cat.onGround = true;
+
+                            // Move with moving platform
+                            if (plat.type === 'moving') {
+                                const newX = plat.originalX + Math.sin(plat.moveTimer) * plat.moveRange;
+                                cat.x += newX - plat.x;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Fall death
+            if (cat.y > 700) {
+                // Reset to last safe position or start
+                cat.x = 100;
+                cat.y = 400;
+                cat.vx = 0;
+                cat.vy = 0;
+                spawnParticles(cat.x + cat.width / 2, cat.y + cat.height / 2, '#FF6B6B', 10);
+            }
+
+            // Left boundary
+            if (cat.x < 0) cat.x = 0;
+        }
+
+        function updatePlatforms() {
+            platforms.forEach(plat => {
+                if (plat.type === 'moving') {
+                    plat.moveTimer += plat.moveSpeed;
+                    plat.x = plat.originalX + Math.sin(plat.moveTimer) * plat.moveRange;
+                }
+            });
+        }
+
+        function updateTreats() {
+            const catCenterX = cat.x + cat.width / 2;
+            const catCenterY = cat.y + cat.height / 2;
+
+            treats.forEach(treat => {
+                if (treat.collected) return;
+
+                treat.bobTimer += 0.1;
+
+                const dx = treat.x - catCenterX;
+                const dy = treat.y - catCenterY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // Magnet effect
+                if (magnetActive && dist < MAGNET_RANGE) {
+                    treat.x -= dx * 0.1;
+                    treat.y -= dy * 0.1;
+                }
+
+                // Collection
+                const collectRange = magnetActive ? 40 : 25;
+                if (dist < collectRange) {
+                    treat.collected = true;
+                    treatsCollected++;
+                    energy = Math.min(100, energy + 5);
+                    spawnParticles(treat.x, treat.y, '#FFD700', 8);
+                    updateHUD();
+
+                    // Check win condition
+                    if (treatsCollected >= 30) {
+                        gameState = 'won';
+                        showResult(true);
+                    }
+                }
+            });
+        }
+
+        function updateBirds() {
+            birds.forEach(bird => {
+                bird.animTimer += 0.1;
+                bird.changeTimer++;
+
+                // Change direction occasionally
+                if (bird.changeTimer > 60 + Math.random() * 60) {
+                    bird.vx = (Math.random() - 0.5) * 4;
+                    bird.vy = (Math.random() - 0.5) * 2;
+                    bird.changeTimer = 0;
+                }
+
+                bird.x += bird.vx;
+                bird.y += bird.vy;
+
+                // Keep in bounds
+                if (bird.y < 50) bird.vy = Math.abs(bird.vy);
+                if (bird.y > 400) bird.vy = -Math.abs(bird.vy);
+
+                // Check collision with cat
+                const catCenterX = cat.x + cat.width / 2;
+                const catCenterY = cat.y + cat.height / 2;
+                const birdCenterX = bird.x;
+                const birdCenterY = bird.y;
+
+                const dx = catCenterX - birdCenterX;
+                const dy = catCenterY - birdCenterY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 35) {
+                    // Knock cat down
+                    cat.vy = 5;
+                    cat.vx = dx > 0 ? 8 : -8;
+                    cat.y += 20;
+                    cat.onGround = false;
+                    spawnParticles(catCenterX, catCenterY, '#FF6B6B', 10);
+
+                    // Push bird away
+                    bird.vx = dx > 0 ? -5 : 5;
+                    bird.vy = -3;
+                }
+            });
+        }
+
+        function updateMagnet() {
+            if (magnetActive) {
+                magnetTimer -= 16.67; // Approximate frame time
+                if (magnetTimer <= 0) {
+                    magnetActive = false;
+                }
+            }
+        }
+
+        function updateCamera() {
+            // Follow cat with smooth camera
+            const targetX = cat.x - canvas.width / 3;
+            const targetY = cat.y - canvas.height / 2;
+
+            camera.x += (targetX - camera.x) * 0.08;
+            camera.y += (targetY - camera.y) * 0.08;
+
+            // Clamp camera
+            if (camera.x < 0) camera.x = 0;
+            if (camera.y > 200) camera.y = 200;
+            if (camera.y < -300) camera.y = -300;
+        }
+
+        function updateParticles() {
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life -= 0.02;
+            });
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6 - 2,
+                    color: color,
+                    size: 3 + Math.random() * 4,
+                    life: 1
+                });
+            }
+        }
+
+        function activateMagnet() {
+            if (energy >= MAGNET_COST && !magnetActive) {
+                magnetActive = true;
+                magnetTimer = MAGNET_DURATION;
+                energy -= MAGNET_COST;
+                updateHUD();
+                spawnParticles(cat.x + cat.width / 2, cat.y + cat.height / 2, '#A855F7', 15);
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('treatsCount').textContent = treatsCollected;
+            document.getElementById('energyFill').style.width = energy + '%';
+        }
+
+        function showResult(won) {
+            const overlay = document.getElementById('resultOverlay');
+            const text = document.getElementById('resultText');
+            const subtext = document.getElementById('resultSubtext');
+
+            overlay.classList.remove('hidden');
+
+            if (won) {
+                text.textContent = '🎉 You Win! 🎉';
+                subtext.textContent = `Amazing job! You collected ${treatsCollected} treats!`;
+            } else {
+                text.textContent = '😿 Game Over';
+                subtext.textContent = 'Those birds got the best of you!';
+            }
+        }
+
+        // ============================================
+        // GAME LOOP
+        // ============================================
+
+        function gameLoop() {
+            if (gameState === 'playing') {
+                updateCat();
+                updatePlatforms();
+                updateTreats();
+                updateBirds();
+                updateMagnet();
+                updateCamera();
+                updateParticles();
+            }
+
+            // Draw
+            drawBackground();
+
+            if (gameState === 'playing' || gameState === 'won') {
+                // Draw platforms
+                platforms.forEach(drawPlatform);
+
+                // Draw treats
+                treats.filter(t => !t.collected).forEach(t => {
+                    drawTreat(t.x - camera.x, t.y - camera.y, t.bobTimer);
+                });
+
+                // Draw birds
+                birds.forEach(b => {
+                    const screenBird = { ...b, x: b.x - camera.x, y: b.y - camera.y };
+                    drawBird(screenBird);
+                });
+
+                // Draw magnet effect
+                drawMagnetEffect();
+
+                // Draw particles
+                drawParticles();
+
+                // Draw cat
+                drawCatSprite(
+                    ctx,
+                    cat.x + cat.width / 2 - camera.x,
+                    cat.y + cat.height - camera.y,
+                    selectedSkin,
+                    cat.facingRight,
+                    cat.animFrame,
+                    1
+                );
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+
+            if (e.code === 'KeyE' && gameState === 'playing') {
+                activateMagnet();
+            }
+
+            // Prevent scrolling
+            if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        document.getElementById('playButton').addEventListener('click', startGame);
+        document.getElementById('restartButton').addEventListener('click', startGame);
+
+        // ============================================
+        // INITIALIZE
+        // ============================================
+
+        initSkinSelector();
+        gameLoop();
+
+        // Add roundRect polyfill if needed
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.lineTo(x + width - radius, y);
+                this.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.lineTo(x + width, y + height - radius);
+                this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.lineTo(x + radius, y + height);
+                this.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.lineTo(x, y + radius);
+                this.quadraticCurveTo(x, y, x + radius, y);
+                this.closePath();
+            };
+        }
+    </script>
+</body>
+</html>
