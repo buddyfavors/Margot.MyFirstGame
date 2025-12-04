@@ -1,6 +1,8 @@
-# 🐱 Cute Cat Obby Adventure 🐱
+# 🐱 Margot's Cat Center 🐱
 
 A super cute cat obstacle course (obby) game where you collect treats and avoid pesky birds!
+
+**[▶️ Play Now](https://buddyfavors.github.io/Margot.MyFirstGame/)** | **[📖 Wiki](wiki/Home.md)**
 
 ## 🎮 How to Play
 
