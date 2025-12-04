@@ -426,10 +426,11 @@
                 <p>
                     🏃 Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>
                     🦘 Press <strong>Space</strong> or <strong>W/Up</strong> to jump<br>
-                    🧲 Press <strong>E</strong> to activate Magnet ability<br>
-                    📱 On mobile: <strong>Tap</strong> to jump, <strong>Double-tap</strong> for Magnet<br>
-                    🐟 Collect <strong>100 treats</strong> to complete the level!<br>
+                    🧲 Magnet <strong>auto-activates</strong> when energy is full!<br>
+                    📱 On mobile: <strong>Tap</strong> to jump, <strong>Swipe</strong> to move<br>
+                    🐟 Collect <strong>100 treats</strong> to win!<br>
                     ⭐ Find rare <strong>MEGA treats</strong> worth 10 points!<br>
+                    🚩 Checkpoints save your progress!<br>
                     🐦 Watch out for pesky birds!
                 </p>
             </div>
@@ -449,7 +450,7 @@
                         <div class="energy-fill" id="energyFill" style="width: 0%"></div>
                     </div>
                 </div>
-                <div class="ability-hint" id="abilityHint">Press E for 🧲 Magnet</div>
+                <div class="ability-hint" id="abilityHint">🧲 Auto-activates when full!</div>
             </div>
         </div>
 
@@ -602,12 +603,15 @@
         let energy = 0;
         let magnetActive = false;
         let magnetTimer = 0;
-        const MAGNET_DURATION = 3000;
-        const MAGNET_COST = 30;
+        const MAGNET_DURATION = 10000; // 10 seconds
+        const MAGNET_COST = 100; // Full energy needed for auto-activation
         const MAGNET_RANGE = 150;
 
         // Camera
         let camera = { x: 0, y: 0 };
+
+        // Checkpoint tracking
+        let lastCheckpoint = { x: 100, y: 400 };
 
         // Cat Player
         const cat = {
@@ -685,13 +689,14 @@
             treats = [];
             birds = [];
 
-            // Ground platform
+            // Ground platform (also first checkpoint)
             platforms.push({
                 x: -100,
                 y: 550,
                 width: 400,
                 height: 60,
-                type: 'ground'
+                type: 'ground',
+                isCheckpoint: true
             });
 
             // Helper to check if a new platform overlaps with existing ones
@@ -810,6 +815,11 @@
                 platforms.push(newPlat);
                 lastPlatform = newPlat;
 
+                // Add checkpoint every 15 platforms on static platforms
+                if (i > 0 && i % 15 === 0 && platType === 'static') {
+                    newPlat.isCheckpoint = true;
+                }
+
                 // Add ONE treat per platform (max 1 per platform)
                 if (Math.random() < 0.7) {
                     // Rare mega treats: only 3% chance, worth 10 points
@@ -850,14 +860,7 @@
                 }
             }
 
-            // Add final goal platform
-            platforms.push({
-                x: lastPlatform.x + lastPlatform.width + 80,
-                y: lastPlatform.y - 20,
-                width: 150,
-                height: 25,
-                type: 'goal'
-            });
+            // No goal platform - game continues until 100 treats are collected!
 
             // Generate birds spread across the level
             const levelWidth = lastPlatform.x + 300;
@@ -886,6 +889,7 @@
             magnetActive = false;
             magnetTimer = 0;
             particles = [];
+            lastCheckpoint = { x: 100, y: 400 }; // Reset checkpoint to start
             generateLevel();
             updateHUD();
         }
@@ -978,6 +982,42 @@
 
             // === HEAD - big cute round head ===
             const headY = -14 + bounce;
+            
+            // Draw Lio's mane BEHIND the head first
+            if (skin.mane) {
+                // Outer mane layer (darkest) - full circle behind head
+                ctx.fillStyle = '#8B4513';
+                for (let i = 0; i < 14; i++) {
+                    const angle = (i / 14) * Math.PI * 2 - Math.PI / 2;
+                    const maneX = Math.cos(angle) * 28;
+                    const maneY = headY + Math.sin(angle) * 24;
+                    ctx.beginPath();
+                    ctx.ellipse(maneX, maneY, 14, 10, angle + 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Middle mane layer
+                ctx.fillStyle = '#CD853F';
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+                    const maneX = Math.cos(angle) * 24;
+                    const maneY = headY + Math.sin(angle) * 20;
+                    ctx.beginPath();
+                    ctx.ellipse(maneX, maneY, 11, 8, angle, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Inner mane layer (lightest)
+                ctx.fillStyle = '#DEB887';
+                for (let i = 0; i < 10; i++) {
+                    const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+                    const maneX = Math.cos(angle) * 20;
+                    const maneY = headY + Math.sin(angle) * 17;
+                    ctx.beginPath();
+                    ctx.ellipse(maneX, maneY, 8, 6, angle - 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
             
             // Head shadow
             ctx.fillStyle = skin.stripeColor;
@@ -1155,51 +1195,58 @@
             ctx.fill();
 
             // === SPECIAL SKINS ACCESSORIES ===
-            // Lio's Mane
-            if (skin.mane) {
-                ctx.fillStyle = '#CD853F';
-                // Draw fluffy mane around face
-                for (let i = 0; i < 12; i++) {
-                    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-                    const maneX = Math.cos(angle) * 22;
-                    const maneY = headY + Math.sin(angle) * 18;
-                    ctx.beginPath();
-                    ctx.ellipse(maneX, maneY, 10, 8, angle, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                // Inner mane layer (lighter)
-                ctx.fillStyle = '#DEB887';
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2 - Math.PI / 2;
-                    const maneX = Math.cos(angle) * 18;
-                    const maneY = headY + Math.sin(angle) * 15;
-                    ctx.beginPath();
-                    ctx.ellipse(maneX, maneY, 6, 5, angle, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
+            // Note: Lio's mane is drawn earlier (before the head) so it appears behind the face
 
-            // Stich's Big Ears (draw extra large ears)
+            // Stitch's distinctive ears (alien-like, not bunny)
             if (skin.bigEars) {
-                // Big rounded ears on top
+                // Left ear - tall pointed alien ear shape
                 ctx.fillStyle = skin.bodyColor;
-                // Left big ear
                 ctx.beginPath();
-                ctx.ellipse(-16, headY - 18, 10, 18, -0.3, 0, Math.PI * 2);
+                ctx.moveTo(-10, headY - 8);
+                ctx.quadraticCurveTo(-22, headY - 20, -18, headY - 45);
+                ctx.quadraticCurveTo(-14, headY - 42, -12, headY - 38);
+                ctx.quadraticCurveTo(-8, headY - 25, -6, headY - 10);
+                ctx.closePath();
                 ctx.fill();
-                // Right big ear
+                
+                // Right ear
                 ctx.beginPath();
-                ctx.ellipse(16, headY - 18, 10, 18, 0.3, 0, Math.PI * 2);
+                ctx.moveTo(10, headY - 8);
+                ctx.quadraticCurveTo(22, headY - 20, 18, headY - 45);
+                ctx.quadraticCurveTo(14, headY - 42, 12, headY - 38);
+                ctx.quadraticCurveTo(8, headY - 25, 6, headY - 10);
+                ctx.closePath();
                 ctx.fill();
-                // Ear inner
+                
+                // Left ear inner (pink/light blue)
                 ctx.fillStyle = skin.earInner;
                 ctx.beginPath();
-                ctx.ellipse(-16, headY - 16, 6, 12, -0.3, 0, Math.PI * 2);
+                ctx.moveTo(-9, headY - 12);
+                ctx.quadraticCurveTo(-18, headY - 22, -16, headY - 38);
+                ctx.quadraticCurveTo(-13, headY - 36, -12, headY - 32);
+                ctx.quadraticCurveTo(-9, headY - 22, -7, headY - 14);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Right ear inner
+                ctx.beginPath();
+                ctx.moveTo(9, headY - 12);
+                ctx.quadraticCurveTo(18, headY - 22, 16, headY - 38);
+                ctx.quadraticCurveTo(13, headY - 36, 12, headY - 32);
+                ctx.quadraticCurveTo(9, headY - 22, 7, headY - 14);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Ear notches (like Stitch has)
+                ctx.fillStyle = skin.bodyColor;
+                ctx.beginPath();
+                ctx.arc(-16, headY - 35, 3, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.ellipse(16, headY - 16, 6, 12, 0.3, 0, Math.PI * 2);
+                ctx.arc(16, headY - 35, 3, 0, Math.PI * 2);
                 ctx.fill();
-                // Darker spots on body
+                
+                // Darker spots on body (like Stitch's markings)
                 ctx.fillStyle = skin.stripeColor;
                 ctx.beginPath();
                 ctx.ellipse(-8, 0 + bounce, 8, 6, 0.2, 0, Math.PI * 2);
@@ -1207,6 +1254,14 @@
                 ctx.beginPath();
                 ctx.ellipse(10, 2 + bounce, 6, 5, -0.3, 0, Math.PI * 2);
                 ctx.fill();
+                
+                // Small back spines (Stitch has small back protrusions)
+                ctx.fillStyle = skin.bodyColor;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(-10 + i * 5, -5 + bounce, 3, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
 
             // === HOLIDAY ACCESSORIES ===
@@ -1481,60 +1536,6 @@
                         ctx.fill();
                     }
                 }
-            } else if (plat.type === 'goal') {
-                // Goal platform - Christmas present style!
-                const gradient = ctx.createLinearGradient(
-                    plat.x - camera.x, 0,
-                    plat.x - camera.x + plat.width, 0
-                );
-                gradient.addColorStop(0, '#dc2626');
-                gradient.addColorStop(0.5, '#ef4444');
-                gradient.addColorStop(1, '#dc2626');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(plat.x - camera.x, plat.y - camera.y, plat.width, plat.height);
-                
-                // Gold ribbon
-                ctx.fillStyle = '#fbbf24';
-                ctx.fillRect(plat.x - camera.x + plat.width / 2 - 8, plat.y - camera.y, 16, plat.height);
-                
-                // Bow on top
-                ctx.fillStyle = '#fbbf24';
-                const bowX = plat.x - camera.x + plat.width / 2;
-                const bowY = plat.y - camera.y - 15;
-                // Left loop
-                ctx.beginPath();
-                ctx.ellipse(bowX - 15, bowY, 12, 8, -0.3, 0, Math.PI * 2);
-                ctx.fill();
-                // Right loop
-                ctx.beginPath();
-                ctx.ellipse(bowX + 15, bowY, 12, 8, 0.3, 0, Math.PI * 2);
-                ctx.fill();
-                // Center knot
-                ctx.beginPath();
-                ctx.arc(bowX, bowY, 8, 0, Math.PI * 2);
-                ctx.fill();
-                // Ribbon tails
-                ctx.beginPath();
-                ctx.moveTo(bowX - 5, bowY + 5);
-                ctx.quadraticCurveTo(bowX - 15, bowY + 25, bowX - 20, bowY + 35);
-                ctx.lineTo(bowX - 12, bowY + 35);
-                ctx.quadraticCurveTo(bowX - 8, bowY + 20, bowX, bowY + 5);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(bowX + 5, bowY + 5);
-                ctx.quadraticCurveTo(bowX + 15, bowY + 25, bowX + 20, bowY + 35);
-                ctx.lineTo(bowX + 12, bowY + 35);
-                ctx.quadraticCurveTo(bowX + 8, bowY + 20, bowX, bowY + 5);
-                ctx.fill();
-
-                // Sparkles
-                ctx.fillStyle = '#FFD700';
-                for (let i = 0; i < 5; i++) {
-                    const sparkleX = plat.x - camera.x + 20 + i * 25;
-                    const sparkleY = plat.y - camera.y - 30 + Math.sin(Date.now() / 200 + i) * 8;
-                    const sparkleSize = 3 + Math.sin(Date.now() / 150 + i * 2) * 2;
-                    drawStar(sparkleX, sparkleY, sparkleSize);
-                }
             } else {
                 // Regular/moving platform - icy/snowy look
                 const isMoving = plat.type === 'moving';
@@ -1594,6 +1595,40 @@
                     ctx.beginPath();
                     ctx.arc(plat.x - camera.x + plat.width / 2 - 1.5, plat.y - camera.y + plat.height / 2 - 1.5, 2, 0, Math.PI * 2);
                     ctx.fill();
+                }
+                
+                // Checkpoint flag indicator
+                if (plat.isCheckpoint) {
+                    const flagX = plat.x - camera.x + plat.width / 2;
+                    const flagY = plat.y - camera.y - 5;
+                    
+                    // Flag pole
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(flagX - 2, flagY - 45, 4, 50);
+                    
+                    // Flag
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath();
+                    ctx.moveTo(flagX + 2, flagY - 45);
+                    ctx.lineTo(flagX + 25, flagY - 35);
+                    ctx.lineTo(flagX + 2, flagY - 25);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Flag highlight
+                    ctx.fillStyle = '#4ade80';
+                    ctx.beginPath();
+                    ctx.moveTo(flagX + 2, flagY - 45);
+                    ctx.lineTo(flagX + 18, flagY - 38);
+                    ctx.lineTo(flagX + 2, flagY - 35);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Checkpoint text
+                    ctx.fillStyle = '#22c55e';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🚩', flagX, flagY - 50);
                 }
             }
 
@@ -1890,16 +1925,28 @@
                             if (plat.type === 'moving' && plat.deltaX !== undefined) {
                                 cat.x += plat.deltaX;
                             }
+                            
+                            // Update checkpoint when landing on a checkpoint platform
+                            if (plat.isCheckpoint) {
+                                lastCheckpoint = { 
+                                    x: plat.x + plat.width / 2 - cat.width / 2, 
+                                    y: plat.y - cat.height 
+                                };
+                            }
                         }
                     }
                 }
             });
 
-            // Fall death
+            // Fall death - respawn at checkpoint
             if (cat.y > 700) {
-                // Reset to last safe position or start
-                cat.x = 100;
-                cat.y = 400;
+                // Lose 5 treats on death (can't go below 0)
+                treatsCollected = Math.max(0, treatsCollected - 5);
+                updateHUD();
+                
+                // Reset to last checkpoint position
+                cat.x = lastCheckpoint.x;
+                cat.y = lastCheckpoint.y;
                 cat.vx = 0;
                 cat.vy = 0;
                 spawnParticles(cat.x + cat.width / 2, cat.y + cat.height / 2, '#FF6B6B', 10);
@@ -2036,6 +2083,15 @@
                 if (magnetTimer <= 0) {
                     magnetActive = false;
                 }
+            } else {
+                // Auto-activate magnet when energy is full
+                if (energy >= MAGNET_COST) {
+                    magnetActive = true;
+                    magnetTimer = MAGNET_DURATION;
+                    energy = 0; // Use all energy
+                    updateHUD();
+                    spawnParticles(cat.x + cat.width / 2, cat.y + cat.height / 2, '#A855F7', 15);
+                }
             }
         }
 
@@ -2169,10 +2225,6 @@
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
 
-            if (e.code === 'KeyE' && gameState === 'playing') {
-                activateMagnet();
-            }
-
             // Prevent scrolling
             if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
                 e.preventDefault();
@@ -2225,7 +2277,6 @@
         // TOUCH CONTROLS
         // ============================================
 
-        let lastTapTime = 0;
         let touchStartX = 0;
         let touchMoveActive = false;
 
@@ -2235,32 +2286,21 @@
         // Update ability hint for touch devices
         if (isTouchDevice) {
             const hint = document.getElementById('abilityHint');
-            if (hint) hint.textContent = 'Double-tap for 🧲 Magnet';
+            if (hint) hint.textContent = '🧲 Auto-activates when full!';
         }
 
-        // Handle tap on canvas for jump/ability
+        // Handle tap on canvas for jump
         canvas.addEventListener('touchstart', (e) => {
             if (gameState !== 'playing') return;
             
             const touch = e.touches[0];
             touchStartX = touch.clientX;
             
-            const currentTime = Date.now();
-            const timeSinceLastTap = currentTime - lastTapTime;
-            
-            // Double-tap detection (within 300ms)
-            if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
-                // Double-tap = activate magnet
-                activateMagnet();
-                lastTapTime = 0; // Reset to prevent triple-tap issues
-            } else {
-                // Single tap = jump
-                if (cat.onGround) {
-                    cat.vy = cat.jumpPower;
-                    cat.onGround = false;
-                    spawnParticles(cat.x + cat.width / 2, cat.y + cat.height, '#FFB8B8', 5);
-                }
-                lastTapTime = currentTime;
+            // Tap = jump (magnet auto-activates when energy is full)
+            if (cat.onGround) {
+                cat.vy = cat.jumpPower;
+                cat.onGround = false;
+                spawnParticles(cat.x + cat.width / 2, cat.y + cat.height, '#FFB8B8', 5);
             }
         }, { passive: true });
 
