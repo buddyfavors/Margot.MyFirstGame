@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>🐱 Margot's Cat Center 🐱</title>
     <style>
         * {
@@ -11,27 +11,122 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
         body {
             font-family: 'Comic Sans MS', 'Chalkboard', cursive;
             background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
         }
 
         #gameContainer {
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: #87CEEB;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             overflow: hidden;
         }
 
         #gameCanvas {
             display: block;
-            border-radius: 20px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Fullscreen button */
+        #fullscreenBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 44px;
+            height: 44px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 10px;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 25;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #fullscreenBtn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        /* Touch controls indicator */
+        #touchControls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .touch-zone {
+            background: rgba(255,255,255,0.3);
+            border-radius: 15px;
+            padding: 15px;
+            pointer-events: auto;
+        }
+
+        .touch-arrows {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .touch-arrow-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .touch-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,107,157,0.8);
+            border: none;
+            border-radius: 12px;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+        }
+
+        .touch-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+
+        @media (pointer: coarse) {
+            #touchControls {
+                display: flex;
+            }
         }
 
         /* Menu Overlay */
@@ -47,8 +142,10 @@
             align-items: center;
             justify-content: flex-start;
             padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
             z-index: 10;
-            border-radius: 20px;
+            overflow-y: auto;
         }
 
         #menuOverlay.hidden {
@@ -84,8 +181,8 @@
         }
 
         .skin-option {
-            width: 100px;
-            height: 120px;
+            width: 90px;
+            height: 110px;
             background: white;
             border-radius: 15px;
             cursor: pointer;
@@ -95,8 +192,46 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 600px) {
+            .skin-option {
+                width: 70px;
+                height: 90px;
+                padding: 5px;
+            }
+            
+            .skin-preview {
+                width: 45px;
+                height: 45px;
+            }
+            
+            .skin-name {
+                font-size: 9px;
+            }
+            
+            .game-title {
+                font-size: 28px;
+            }
+            
+            .subtitle {
+                font-size: 14px;
+            }
+            
+            .instructions {
+                padding: 10px 15px;
+                margin: 10px 0;
+            }
+            
+            .instructions h3 {
+                font-size: 14px;
+            }
+            
+            .instructions p {
+                font-size: 12px;
+            }
         }
 
         .skin-option:hover {
@@ -149,9 +284,9 @@
         /* HUD */
         #hud {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
+            top: max(10px, env(safe-area-inset-top));
+            left: max(10px, env(safe-area-inset-left));
+            right: max(60px, calc(env(safe-area-inset-right) + 50px));
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -211,7 +346,7 @@
             align-items: center;
             justify-content: center;
             z-index: 20;
-            border-radius: 20px;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         #resultOverlay.hidden {
@@ -261,6 +396,21 @@
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <button id="fullscreenBtn" title="Fullscreen">⛶</button>
+
+        <!-- Touch Controls for Mobile -->
+        <div id="touchControls">
+            <div class="touch-zone touch-arrows">
+                <button class="touch-btn" id="touchUp">⬆</button>
+                <div class="touch-arrow-row">
+                    <button class="touch-btn" id="touchLeft">⬅</button>
+                    <button class="touch-btn" id="touchRight">➡</button>
+                </div>
+            </div>
+            <div class="touch-zone">
+                <button class="touch-btn" id="touchJump" style="width: 70px; height: 70px; font-size: 28px;">🦘</button>
+            </div>
+        </div>
         
         <!-- Menu Overlay -->
         <div id="menuOverlay">
@@ -277,6 +427,7 @@
                     🏃 Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>
                     🦘 Press <strong>Space</strong> or <strong>W/Up</strong> to jump<br>
                     🧲 Press <strong>E</strong> to activate Magnet ability<br>
+                    📱 On mobile: <strong>Tap</strong> to jump, <strong>Double-tap</strong> for Magnet<br>
                     🐟 Collect <strong>30 treats</strong> to complete the level!<br>
                     🐦 Watch out for pesky birds!
                 </p>
@@ -297,7 +448,7 @@
                         <div class="energy-fill" id="energyFill" style="width: 0%"></div>
                     </div>
                 </div>
-                <div class="ability-hint">Press E for 🧲 Magnet</div>
+                <div class="ability-hint" id="abilityHint">Press E for 🧲 Magnet</div>
             </div>
         </div>
 
@@ -1400,6 +1551,156 @@
         });
 
         document.getElementById('restartButton').addEventListener('click', startGame);
+
+        // ============================================
+        // FULLSCREEN & CANVAS RESIZE
+        // ============================================
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            canvas.width = container.clientWidth || window.innerWidth;
+            canvas.height = container.clientHeight || window.innerHeight;
+        }
+
+        function toggleFullscreen() {
+            const elem = document.documentElement;
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
+        document.addEventListener('fullscreenchange', resizeCanvas);
+        document.addEventListener('webkitfullscreenchange', resizeCanvas);
+
+        // Initial resize
+        resizeCanvas();
+
+        // ============================================
+        // TOUCH CONTROLS
+        // ============================================
+
+        let lastTapTime = 0;
+        let touchStartX = 0;
+        let touchMoveActive = false;
+
+        // Check if device supports touch
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Update ability hint for touch devices
+        if (isTouchDevice) {
+            const hint = document.getElementById('abilityHint');
+            if (hint) hint.textContent = 'Double-tap for 🧲 Magnet';
+        }
+
+        // Handle tap on canvas for jump/ability
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState !== 'playing') return;
+            
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            
+            const currentTime = Date.now();
+            const timeSinceLastTap = currentTime - lastTapTime;
+            
+            // Double-tap detection (within 300ms)
+            if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+                // Double-tap = activate magnet
+                activateMagnet();
+                lastTapTime = 0; // Reset to prevent triple-tap issues
+            } else {
+                // Single tap = jump
+                if (cat.onGround) {
+                    cat.vy = cat.jumpPower;
+                    cat.onGround = false;
+                    spawnParticles(cat.x + cat.width / 2, cat.y + cat.height, '#FFB8B8', 5);
+                }
+                lastTapTime = currentTime;
+            }
+        }, { passive: true });
+
+        // Handle swipe for horizontal movement
+        canvas.addEventListener('touchmove', (e) => {
+            if (gameState !== 'playing') return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            
+            // Swipe threshold
+            if (Math.abs(deltaX) > 30) {
+                touchMoveActive = true;
+                if (deltaX > 0) {
+                    keys['ArrowRight'] = true;
+                    keys['ArrowLeft'] = false;
+                    cat.facingRight = true;
+                } else {
+                    keys['ArrowLeft'] = true;
+                    keys['ArrowRight'] = false;
+                    cat.facingRight = false;
+                }
+            }
+        }, { passive: true });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (touchMoveActive) {
+                keys['ArrowLeft'] = false;
+                keys['ArrowRight'] = false;
+                touchMoveActive = false;
+            }
+        }, { passive: true });
+
+        // On-screen button controls
+        function setupTouchButton(id, keyCode, isToggle = false) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                keys[keyCode] = true;
+                
+                // For jump button, trigger jump immediately
+                if (id === 'touchJump' && gameState === 'playing' && cat.onGround) {
+                    cat.vy = cat.jumpPower;
+                    cat.onGround = false;
+                    spawnParticles(cat.x + cat.width / 2, cat.y + cat.height, '#FFB8B8', 5);
+                }
+            }, { passive: false });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                keys[keyCode] = false;
+            }, { passive: false });
+            
+            btn.addEventListener('touchcancel', (e) => {
+                keys[keyCode] = false;
+            }, { passive: true });
+        }
+
+        setupTouchButton('touchUp', 'ArrowUp');
+        setupTouchButton('touchLeft', 'ArrowLeft');
+        setupTouchButton('touchRight', 'ArrowRight');
+        setupTouchButton('touchJump', 'Space');
+
+        // Prevent default touch behaviors on game container
+        document.getElementById('gameContainer').addEventListener('touchmove', (e) => {
+            if (gameState === 'playing') {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // ============================================
         // INITIALIZE
